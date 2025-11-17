@@ -1,0 +1,14 @@
+unsigned int counter = 0;
+float pi = 3.14159;
+
+struct Point {
+    int x;
+    int y;
+};
+
+int main() {
+    unsigned int max = 100;
+    float result = pi * 2.0;
+    printf("Counter: %u, Result: %f", counter, result);
+    return 0;
+}
