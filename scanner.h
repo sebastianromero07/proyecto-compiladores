@@ -3,6 +3,8 @@
 
 #include <string>
 #include "token.h"
+#include <vector>
+
 using namespace std;
 
 
@@ -13,15 +15,11 @@ private:
     int current;
 
 public:
-    // Constructor
-    Scanner(const char* in_s);
-
-    // Retorna el siguiente token
-    Token* nextToken();
-
-    // Destructor
+    Scanner(const char* s);
     ~Scanner();
-
+    Token* nextToken();
+    Token* peek(); // ✅ NUEVO: para lookahead
+    vector<Token*>& getTokens(); // ✅ NUEVO: para backtracking
 };
 
 // Ejecutar scanner

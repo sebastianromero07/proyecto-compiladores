@@ -13,8 +13,8 @@ public:
         PLUS, MINUS, MUL, DIV,
         
         // Paréntesis y delimitadores
-        LPAREN, RPAREN, LBRACE, RBRACE,
-        
+        LPAREN, RPAREN, LBRACE, RBRACE, POINT,
+
         // Operadores de comparación
         LT, LE, EQ,
         

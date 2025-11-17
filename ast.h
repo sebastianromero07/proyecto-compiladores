@@ -29,7 +29,7 @@ class TypeDecl {
 public:
     enum TypeKind {
         INT_TYPE,
-        UNSIGNED_INT_TYPE,
+        UNSIGNED_TYPE,      // ← CAMBIO: para "unsigned id"
         FLOAT_TYPE,
         STRUCT_TYPE,
         ID_TYPE

@@ -79,13 +79,15 @@ Token* Scanner::nextToken() {
         else if (lexema == "true") return new Token(Token::TRUE, input, first, current - first);
         else if (lexema == "false") return new Token(Token::FALSE, input, first, current - first);
         
-        // Tipos de datos
-        else if (lexema == "int") return new Token(Token::INT, input, first, current - first);
+        // Palabras clave estructurales
         else if (lexema == "unsigned") return new Token(Token::UNSIGNED, input, first, current - first);
-        else if (lexema == "float") return new Token(Token::FLOAT, input, first, current - first);
         else if (lexema == "struct") return new Token(Token::STRUCT, input, first, current - first);
         
-        // Identificador normal
+        // ❌ REMOVER ESTAS LÍNEAS - int y float ahora son ID:
+        // else if (lexema == "int") return new Token(Token::INT, input, first, current - first);
+        // else if (lexema == "float") return new Token(Token::FLOAT, input, first, current - first);
+        
+        // Identificador normal (incluyendo "int", "float", "char", etc.)
         else return new Token(Token::ID, input, first, current - first);
     }
     // Operadores de comparación y asignación
@@ -108,7 +110,7 @@ Token* Scanner::nextToken() {
         }
     }
     // Otros operadores y símbolos
-    else if (strchr("+/-*(){};,", c)) {
+    else if (strchr("+/-*(){};,.", c)) {
         switch (c) {
             case '+': token = new Token(Token::PLUS, c); break;
             case '-': token = new Token(Token::MINUS, c); break;
@@ -120,6 +122,7 @@ Token* Scanner::nextToken() {
             case '}': token = new Token(Token::RBRACE, c); break;
             case ';': token = new Token(Token::SEMICOL, c); break;
             case ',': token = new Token(Token::COMA, c); break;
+            case '.': token = new Token(Token::POINT, c); break;
             default: token = new Token(Token::ERR, c); break;
         }
         current++;
@@ -134,6 +137,7 @@ Token* Scanner::nextToken() {
 
 Scanner::~Scanner() { }
 
+// ... resto del archivo sin cambios
 
 // -----------------------------
 // Función de prueba

@@ -46,6 +46,7 @@ ostream& operator<<(ostream& outs, const Token& tok) {
         case Token::STRUCT:    outs << "TOKEN(STRUCT, \""    << tok.text << "\")"; break;
         case Token::END:       outs << "TOKEN(END)"; break;
         case Token::ERR:       outs << "TOKEN(ERR, \""       << tok.text << "\")"; break;
+        case Token::POINT:     outs << "TOKEN(POINT, \""     << tok.text << "\")"; break;
         default:               outs << "TOKEN(UNKNOWN)"; break;
     }
     return outs;

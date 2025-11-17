@@ -12,7 +12,7 @@ TypeDecl::~TypeDecl() {}
 string TypeDecl::toString() const {
     switch (kind) {
         case INT_TYPE: return "int";
-        case UNSIGNED_INT_TYPE: return "unsigned int";
+        case UNSIGNED_TYPE: return "unsigned " + name;  // ← CAMBIO
         case FLOAT_TYPE: return "float";
         case STRUCT_TYPE: return "struct " + name;
         case ID_TYPE: return name;

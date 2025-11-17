@@ -43,84 +43,108 @@ bool Parser::isAtEnd() {
     return current->type == Token::END;
 }
 
+bool Parser::isTypeStart() {
+    return check(Token::UNSIGNED) || check(Token::STRUCT) || check(Token::ID);
+}
+
+bool Parser::isLocalDecl() {
+    if (check(Token::STRUCT)) return true;
+    if (check(Token::UNSIGNED)) return true;
+    if (check(Token::ID)) {
+        // Heurística simple: si no es una palabra clave de statement, es declaración
+        string id = current->text;
+        return !(id == "if" || id == "while" || id == "for" || 
+                id == "return" || id == "printf");
+    }
+    return false;
+}
+
 Program* Parser::parseProgram() {
     Program* prog = new Program();
     
-    // Parsear declaraciones globales y funciones
+    // DeclList ::= (GlobalDecl)*
     while (!isAtEnd()) {
         if (check(Token::STRUCT)) {
             prog->structdecs.push_back(parseStructDec());
+        } else if (isTypeStart()) {
+            // Parsear declaración y determinar si es función o variable
+            parseGlobalDecl(prog);
         } else {
-            // Determinar si es variable o función
-            TypeDecl* type = parseType();
-            if (match(Token::ID)) {
-                string name = previous->text;
-                if (check(Token::LPAREN)) {
-                    // Es una función
-                    FunDec* fd = parseFunDec(type, name);
-                    prog->fundecs.push_back(fd);
-                } else {
-                    // Es una variable global con posible inicialización
-                    VarDec* vd = new VarDec(type);
-                    vd->vars.push_back(name);
-                    
-                    // Manejar inicialización (opcional)
-                    if (match(Token::ASSIGN)) {
-                        // Saltar la expresión de inicialización por ahora
-                        while (!check(Token::SEMICOL) && !check(Token::COMA) && !isAtEnd()) {
-                            advance();
-                        }
-                    }
-                    
-                    // Manejar múltiples variables
-                    while (match(Token::COMA)) {
-                        if (match(Token::ID)) {
-                            vd->vars.push_back(previous->text);
-                            // Manejar inicialización de esta variable también
-                            if (match(Token::ASSIGN)) {
-                                while (!check(Token::SEMICOL) && !check(Token::COMA) && !isAtEnd()) {
-                                    advance();
-                                }
-                            }
-                        }
-                    }
-                    match(Token::SEMICOL);
-                    prog->vardecs.push_back(vd);
-                }
-            }
+            // Error: token inesperado
+            advance(); // Saltar token problemático
         }
     }
-    
     return prog;
 }
 
-TypeDecl* Parser::parseType() {
-    if (match(Token::INT)) {
-        return new TypeDecl(TypeDecl::INT_TYPE);
-    } else if (match(Token::UNSIGNED)) {
-        if (match(Token::INT)) {
-            return new TypeDecl(TypeDecl::UNSIGNED_INT_TYPE);
-        } else {
-            // Si solo dice "unsigned", asumir "unsigned int"
-            return new TypeDecl(TypeDecl::UNSIGNED_INT_TYPE);
-        }
-    } else if (match(Token::FLOAT)) {
-        return new TypeDecl(TypeDecl::FLOAT_TYPE);
-    } else if (match(Token::STRUCT)) {
-        if (match(Token::ID)) {
-            return new TypeDecl(TypeDecl::STRUCT_TYPE, previous->text);
-        }
-    } else if (match(Token::ID)) {
-        return new TypeDecl(TypeDecl::ID_TYPE, previous->text);
+void Parser::parseGlobalDecl(Program* prog) {
+    // Type id ...
+    TypeDecl* type = parseType();
+    
+    if (!match(Token::ID)) {
+        delete type;
+        return;
     }
     
-    return new TypeDecl(TypeDecl::INT_TYPE); // Default
+    string name = previous->text;
+    
+    if (check(Token::LPAREN)) {
+        // Es función: Type id ([ParamDecList]) Body
+        prog->fundecs.push_back(parseFunDec(type, name));
+    } else {
+        // Es variable: Type VarList ;
+        // Crear VarDec y agregar el primer identificador
+        VarDec* vd = new VarDec(type);
+        vd->vars.push_back(name);
+        
+        // Parsear resto de VarList: (, id)*
+        while (match(Token::COMA)) {
+            if (match(Token::ID)) {
+                vd->vars.push_back(previous->text);
+            }
+        }
+        
+        match(Token::SEMICOL);
+        prog->vardecs.push_back(vd);
+    }
+}
+
+TypeDecl* Parser::parseType() {
+    if (match(Token::UNSIGNED)) {
+        if (match(Token::ID)) {
+            // "unsigned int", "unsigned char", etc.
+            return new TypeDecl(TypeDecl::UNSIGNED_TYPE, previous->text);
+        } else {
+            // Error: esperaba ID después de unsigned
+            return new TypeDecl(TypeDecl::UNSIGNED_TYPE, "int"); // Default
+        }
+    } else if (match(Token::STRUCT)) {
+        if (match(Token::ID)) {
+            // "struct Point", etc.
+            return new TypeDecl(TypeDecl::STRUCT_TYPE, previous->text);
+        } else {
+            // Error: esperaba ID después de struct
+            return nullptr;
+        }
+    } else if (match(Token::ID)) {
+        // "int", "float", tipos personalizados
+        string typeName = previous->text;
+        if (typeName == "int") {
+            return new TypeDecl(TypeDecl::INT_TYPE);
+        } else if (typeName == "float") {
+            return new TypeDecl(TypeDecl::FLOAT_TYPE);
+        } else {
+            return new TypeDecl(TypeDecl::ID_TYPE, typeName);
+        }
+    }
+    return nullptr;
 }
 
 VarDec* Parser::parseVarDec() {
     TypeDecl* type = parseType();
     VarDec* vd = new VarDec(type);
     
+    // VarList ::= id (, id)*
     if (match(Token::ID)) {
         vd->vars.push_back(previous->text);
         
@@ -143,6 +167,7 @@ StructDec* Parser::parseStructDec() {
         sd = new StructDec(previous->text);
         match(Token::LBRACE);
         
+        // VarDecList ::= (VarDec)*
         while (!check(Token::RBRACE) && !isAtEnd()) {
             sd->fields.push_back(parseVarDec());
         }
@@ -155,18 +180,16 @@ StructDec* Parser::parseStructDec() {
 }
 
 FunDec* Parser::parseFunDec() {
-    // Esta es la versión básica llamada desde parseProgram
-    return nullptr;
+    return nullptr; // No se usa esta versión
 }
 
-// Versión sobrecargada para parsear función con tipo y nombre ya conocidos
 FunDec* Parser::parseFunDec(TypeDecl* rtype, string name) {
     vector<TypeDecl*> ptypes;
     vector<string> pnames;
     
     match(Token::LPAREN);
     
-    // Parsear parámetros si existen
+    // ParamDecList ::= Type id (, Type id)*
     if (!check(Token::RPAREN)) {
         do {
             TypeDecl* ptype = parseType();
@@ -190,13 +213,19 @@ Body* Parser::parseBody() {
     
     match(Token::LBRACE);
     
-    // Parsear declaraciones de variables locales
-    while (check(Token::INT) || check(Token::UNSIGNED) || check(Token::FLOAT) || 
-           check(Token::STRUCT) || (check(Token::ID) && !isStatement())) {
-        body->vardecs.push_back(parseVarDec());
+    // LocalDeclList ::= (LocalDecl)*
+    // LocalDecl ::= VarDec | StructDec
+    while (isLocalDecl() && !isAtEnd()) {
+        if (check(Token::STRUCT)) {
+            StructDec* sd = parseStructDec();
+            // Por ahora, saltamos structs locales
+            delete sd;
+        } else {
+            body->vardecs.push_back(parseVarDec());
+        }
     }
     
-    // Parsear statements
+    // StmtList ::= (Stmt)*
     while (!check(Token::RBRACE) && !isAtEnd()) {
         Stm* stm = parseStm();
         if (stm) {
@@ -208,11 +237,10 @@ Body* Parser::parseBody() {
     return body;
 }
 
-// Función auxiliar para determinar si el token actual inicia un statement
 bool Parser::isStatement() {
     return check(Token::IF) || check(Token::WHILE) || check(Token::FOR) || 
-           check(Token::RETURN) || check(Token::PRINTF) || check(Token::LBRACE) ||
-           (check(Token::ID) && current + 1 && (current + 1)->type == Token::ASSIGN);
+           check(Token::RETURN) || check(Token::PRINTF) || 
+           check(Token::ID);
 }
 
 Stm* Parser::parseStm() {
@@ -230,7 +258,7 @@ Stm* Parser::parseStm() {
         // Puede ser asignación o llamada a función
         string id = previous->text;
         if (match(Token::ASSIGN)) {
-            // Es asignación
+            // Es asignación: id = CExp ;
             Exp* rhs = parseCE();
             match(Token::SEMICOL);
             return new AssignStm(id, rhs);
@@ -251,7 +279,7 @@ Stm* Parser::parseStm() {
         }
     }
     
-    // Si no es ningún statement reconocido, saltar hasta el siguiente ;
+    // Si no es ningún statement reconocido, error
     while (!check(Token::SEMICOL) && !isAtEnd()) {
         advance();
     }
@@ -260,7 +288,6 @@ Stm* Parser::parseStm() {
     return nullptr;
 }
 
-// Métodos auxiliares para parsear diferentes tipos de statements
 Stm* Parser::parseIfStm() {
     match(Token::LPAREN);
     Exp* condition = parseCE();
@@ -287,11 +314,14 @@ Stm* Parser::parseWhileStm() {
 Stm* Parser::parseForStm() {
     match(Token::LPAREN);
     
-    // Inicialización (puede ser declaración o asignación)
+    // for ((VarDec | id = CExp) ; CExp ; id = CExp) Body
     Stm* init = nullptr;
-    if (check(Token::INT) || check(Token::UNSIGNED) || check(Token::FLOAT)) {
-        init = parseVarDec();
+    
+    if (isLocalDecl()) {
+        // Es VarDec
+        init = parseVarDec(); // VarDec ya incluye el ;
     } else if (match(Token::ID)) {
+        // Es id = CExp ;
         string id = previous->text;
         match(Token::ASSIGN);
         Exp* rhs = parseCE();
@@ -303,7 +333,7 @@ Stm* Parser::parseForStm() {
     Exp* condition = parseCE();
     match(Token::SEMICOL);
     
-    // Actualización
+    // Actualización: id = CExp
     AssignStm* update = nullptr;
     if (match(Token::ID)) {
         string id = previous->text;
@@ -331,6 +361,7 @@ Stm* Parser::parsePrintStm() {
     PrintStm* pstm = new PrintStm();
     match(Token::LPAREN);
     
+    // ArgList ::= CExp (, CExp)*
     if (!check(Token::RPAREN)) {
         do {
             pstm->args.push_back(parseCE());
@@ -342,7 +373,9 @@ Stm* Parser::parsePrintStm() {
     return pstm;
 }
 
+// ✅ Expresiones según gramática exacta
 Exp* Parser::parseCE() {
+    // CExp ::= Exp [(< | <= | ==) Exp]
     Exp* left = parseE();
     
     if (match(Token::LT) || match(Token::LE) || match(Token::EQ)) {
@@ -359,11 +392,11 @@ Exp* Parser::parseCE() {
 }
 
 Exp* Parser::parseBE() {
-    // Por ahora, delegamos a parseE
-    return parseE();
+    return parseE(); // No se usa en la gramática
 }
 
 Exp* Parser::parseE() {
+    // Exp ::= Term ((+ | -) Term)*
     Exp* left = parseT();
     
     while (match(Token::PLUS) || match(Token::MINUS)) {
@@ -376,6 +409,7 @@ Exp* Parser::parseE() {
 }
 
 Exp* Parser::parseT() {
+    // Term ::= Factor ((* | /) Factor)*
     Exp* left = parseF();
     
     while (match(Token::MUL) || match(Token::DIV)) {
@@ -388,6 +422,7 @@ Exp* Parser::parseT() {
 }
 
 Exp* Parser::parseF() {
+    // Factor ::= id | Num | FloatNum | Bool | (Exp) | id([ArgList])
     if (match(Token::NUM)) {
         return new NumberExp(stoi(previous->text));
     } else if (match(Token::FLOAT_NUM)) {
@@ -401,7 +436,7 @@ Exp* Parser::parseF() {
     } else if (match(Token::ID)) {
         string id = previous->text;
         if (match(Token::LPAREN)) {
-            // Llamada a función
+            // id([ArgList])
             FcallExp* fcall = new FcallExp(id);
             
             if (!check(Token::RPAREN)) {
@@ -413,14 +448,15 @@ Exp* Parser::parseF() {
             match(Token::RPAREN);
             return fcall;
         } else {
-            // Variable
+            // id simple
             return new IdExp(id);
         }
     } else if (match(Token::LPAREN)) {
+        // (Exp)
         Exp* exp = parseCE();
         match(Token::RPAREN);
         return exp;
     }
     
-    return new NumberExp(0); // Default
+    return new NumberExp(0); // Default para errores
 }

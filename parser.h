@@ -12,7 +12,12 @@ private:
     bool check(Token::Type ttype);
     bool advance();
     bool isAtEnd();
+    
+    // Métodos auxiliares para gramática
+    bool isTypeStart();
+    bool isLocalDecl();
     bool isStatement();
+    void parseGlobalDecl(Program* prog); // ✅ NUEVO: simplifica parsing
 
 public:
     Parser(Scanner* sc);
