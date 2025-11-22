@@ -24,7 +24,10 @@ ostream& operator<<(ostream& outs, const Token& tok) {
         case Token::RBRACE:    outs << "TOKEN(RBRACE, \""    << tok.text << "\")"; break;
         case Token::LT:        outs << "TOKEN(LT, \""        << tok.text << "\")"; break;
         case Token::LE:        outs << "TOKEN(LE, \""        << tok.text << "\")"; break;
+        case Token::GT:        outs << "TOKEN(GT, \""        << tok.text << "\")"; break; 
+        case Token::GE:        outs << "TOKEN(GE, \""        << tok.text << "\")"; break; 
         case Token::EQ:        outs << "TOKEN(EQ, \""        << tok.text << "\")"; break;
+        case Token::NE:        outs << "TOKEN(NE, \""        << tok.text << "\")"; break; 
         case Token::ASSIGN:    outs << "TOKEN(ASSIGN, \""    << tok.text << "\")"; break;
         case Token::SEMICOL:   outs << "TOKEN(SEMICOL, \""   << tok.text << "\")"; break;
         case Token::COMA:      outs << "TOKEN(COMA, \""      << tok.text << "\")"; break;
@@ -40,13 +43,13 @@ ostream& operator<<(ostream& outs, const Token& tok) {
         case Token::FOR:       outs << "TOKEN(FOR, \""       << tok.text << "\")"; break;
         case Token::RETURN:    outs << "TOKEN(RETURN, \""    << tok.text << "\")"; break;
         case Token::PRINTF:    outs << "TOKEN(PRINTF, \""    << tok.text << "\")"; break;
-        case Token::INT:       outs << "TOKEN(INT, \""       << tok.text << "\")"; break;
         case Token::UNSIGNED:  outs << "TOKEN(UNSIGNED, \""  << tok.text << "\")"; break;
-        case Token::FLOAT:     outs << "TOKEN(FLOAT, \""     << tok.text << "\")"; break;
         case Token::STRUCT:    outs << "TOKEN(STRUCT, \""    << tok.text << "\")"; break;
+        case Token::INCLUDE:     outs << "TOKEN(INCLUDE, \""     << tok.text << "\")"; break;
+        case Token::PREPROCESSOR: outs << "TOKEN(PREPROCESSOR, \"" << tok.text << "\")"; break;
+        
         case Token::END:       outs << "TOKEN(END)"; break;
         case Token::ERR:       outs << "TOKEN(ERR, \""       << tok.text << "\")"; break;
-        case Token::POINT:     outs << "TOKEN(POINT, \""     << tok.text << "\")"; break;
         default:               outs << "TOKEN(UNKNOWN)"; break;
     }
     return outs;

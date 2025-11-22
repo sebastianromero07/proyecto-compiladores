@@ -28,8 +28,27 @@ Token* Scanner::nextToken() {
     first = current;
     c = input[current];
 
+    // ✅ NUEVO: Manejar directivas de preprocesador (#include, #define, etc.)
+    if (c == '#') {
+        current++; // Saltar el #
+        
+        // Leer hasta el final de la línea o hasta encontrar un delimitador
+        while (current < input.length() && 
+               input[current] != '\n' && input[current] != '\r') {
+            current++;
+        }
+        
+        string directive = input.substr(first, current - first);
+        
+        // Verificar si es #include específicamente
+        if (directive.find("#include") == 0) {
+            return new Token(Token::INCLUDE, input, first, current - first);
+        } else {
+            return new Token(Token::PREPROCESSOR, input, first, current - first);
+        }
+    }
     // Números (incluyendo flotantes)
-    if (isdigit(c)) {
+    else if (isdigit(c)) {
         while (current < input.length() && isdigit(input[current])) {
             current++;
         }
@@ -62,9 +81,30 @@ Token* Scanner::nextToken() {
         current++; // incluir la comilla final
         token = new Token(Token::STRING, input, first, current - first);
     }
+    // ✅ NUEVO: Manejar < y > para #include<stdio.h>
+    else if (c == '<') {
+        current++;
+        if (current < input.length() && input[current] == '=') {
+            current++;
+            token = new Token(Token::LE, input, first, 2);
+        } else {
+            // Verificar si estamos dentro de un #include
+            // Para simplicidad, tratar < como un token individual
+            token = new Token(Token::LT, input, first, 1);
+        }
+    }
+    else if (c == '>') {
+        current++;
+        if (current < input.length() && input[current] == '=') {
+            current++;
+            token = new Token(Token::GE, input, first, 2);
+        } else {
+            token = new Token(Token::GT, input, first, 1);
+        }
+    }
     // Identificadores y palabras clave
     else if (isalpha(c) || c == '_') {
-        while (current < input.length() && (isalnum(input[current]) || input[current] == '_')) {
+        while (current < input.length() && (isalnum(input[current]) || input[current] == '_' || input[current] == '.')) {
             current++;
         }
         string lexema = input.substr(first, current - first);
@@ -83,23 +123,10 @@ Token* Scanner::nextToken() {
         else if (lexema == "unsigned") return new Token(Token::UNSIGNED, input, first, current - first);
         else if (lexema == "struct") return new Token(Token::STRUCT, input, first, current - first);
         
-        // ❌ REMOVER ESTAS LÍNEAS - int y float ahora son ID:
-        // else if (lexema == "int") return new Token(Token::INT, input, first, current - first);
-        // else if (lexema == "float") return new Token(Token::FLOAT, input, first, current - first);
-        
-        // Identificador normal (incluyendo "int", "float", "char", etc.)
+        // Identificador normal (incluyendo "int", "float", "stdio.h", etc.)
         else return new Token(Token::ID, input, first, current - first);
     }
     // Operadores de comparación y asignación
-    else if (c == '<') {
-        if (current + 1 < input.length() && input[current + 1] == '=') {
-            current += 2;
-            token = new Token(Token::LE, input, first, 2);
-        } else {
-            current++;
-            token = new Token(Token::LT, input, first, 1);
-        }
-    }
     else if (c == '=') {
         if (current + 1 < input.length() && input[current + 1] == '=') {
             current += 2;
@@ -110,7 +137,7 @@ Token* Scanner::nextToken() {
         }
     }
     // Otros operadores y símbolos
-    else if (strchr("+/-*(){};,.", c)) {
+    else if (strchr("+/-*(){};,", c)) {
         switch (c) {
             case '+': token = new Token(Token::PLUS, c); break;
             case '-': token = new Token(Token::MINUS, c); break;
@@ -122,7 +149,6 @@ Token* Scanner::nextToken() {
             case '}': token = new Token(Token::RBRACE, c); break;
             case ';': token = new Token(Token::SEMICOL, c); break;
             case ',': token = new Token(Token::COMA, c); break;
-            case '.': token = new Token(Token::POINT, c); break;
             default: token = new Token(Token::ERR, c); break;
         }
         current++;
@@ -137,7 +163,6 @@ Token* Scanner::nextToken() {
 
 Scanner::~Scanner() { }
 
-// ... resto del archivo sin cambios
 
 // -----------------------------
 // Función de prueba

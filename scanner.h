@@ -3,10 +3,8 @@
 
 #include <string>
 #include "token.h"
-#include <vector>
 
 using namespace std;
-
 
 class Scanner {
 private:
@@ -18,11 +16,9 @@ public:
     Scanner(const char* s);
     ~Scanner();
     Token* nextToken();
-    Token* peek(); // ✅ NUEVO: para lookahead
-    vector<Token*>& getTokens(); // ✅ NUEVO: para backtracking
 };
 
 // Ejecutar scanner
-int ejecutar_scanner(Scanner* scanner,const string& InputFile);
+int ejecutar_scanner(Scanner* scanner, const string& InputFile);
 
 #endif // SCANNER_H

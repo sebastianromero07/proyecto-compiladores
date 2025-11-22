@@ -9,29 +9,21 @@ using namespace std;
 class Token {
 public:
     enum Type {
-        // Operadores aritméticos
-        PLUS, MINUS, MUL, DIV,
-        
-        // Paréntesis y delimitadores
-        LPAREN, RPAREN, LBRACE, RBRACE, POINT,
-
-        // Operadores de comparación
-        LT, LE, EQ,
-        
-        // Asignación y otros símbolos
-        ASSIGN, SEMICOL, COMA,
-        
-        // Literales
-        NUM, ID, STRING, TRUE, FALSE, FLOAT_NUM,
+        // Tokens existentes
+        LPAREN, RPAREN, LBRACE, RBRACE, SEMICOL, COMA,
+        PLUS, MINUS, MUL, DIV, ASSIGN, LT, LE, GT, GE, EQ, NE,
+        NUM, FLOAT_NUM, ID, STRING,
         
         // Palabras clave
-        IF, ELSE, WHILE, FOR, RETURN, PRINTF,
+        IF, ELSE, WHILE, FOR, RETURN, PRINTF, TRUE, FALSE,
+        UNSIGNED, STRUCT,
         
-        // Tipos de datos
-        INT, UNSIGNED, FLOAT, STRUCT,
+        // ✅ NUEVO: Directivas de preprocesador
+        INCLUDE,     // #include
+        PREPROCESSOR, // Cualquier directiva que empiece con #
         
         // Tokens especiales
-        END, ERR
+        ERR, END
     };
 
     Type type;

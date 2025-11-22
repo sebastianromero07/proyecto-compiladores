@@ -48,10 +48,8 @@ bool Parser::isTypeStart() {
 }
 
 bool Parser::isLocalDecl() {
-    if (check(Token::STRUCT)) return true;
     if (check(Token::UNSIGNED)) return true;
     if (check(Token::ID)) {
-        // Heurística simple: si no es una palabra clave de statement, es declaración
         string id = current->text;
         return !(id == "if" || id == "while" || id == "for" || 
                 id == "return" || id == "printf");
@@ -64,6 +62,12 @@ Program* Parser::parseProgram() {
     
     // DeclList ::= (GlobalDecl)*
     while (!isAtEnd()) {
+        // ✅ NUEVO: Saltar directivas de preprocesador
+        if (check(Token::INCLUDE) || check(Token::PREPROCESSOR)) {
+            advance(); // Saltar la directiva
+            continue;
+        }
+        
         if (check(Token::STRUCT)) {
             prog->structdecs.push_back(parseStructDec());
         } else if (isTypeStart()) {
@@ -213,19 +217,10 @@ Body* Parser::parseBody() {
     
     match(Token::LBRACE);
     
-    // LocalDeclList ::= (LocalDecl)*
-    // LocalDecl ::= VarDec | StructDec
     while (isLocalDecl() && !isAtEnd()) {
-        if (check(Token::STRUCT)) {
-            StructDec* sd = parseStructDec();
-            // Por ahora, saltamos structs locales
-            delete sd;
-        } else {
-            body->vardecs.push_back(parseVarDec());
-        }
+        body->vardecs.push_back(parseVarDec());
     }
     
-    // StmtList ::= (Stmt)*
     while (!check(Token::RBRACE) && !isAtEnd()) {
         Stm* stm = parseStm();
         if (stm) {
@@ -373,16 +368,18 @@ Stm* Parser::parsePrintStm() {
     return pstm;
 }
 
-// ✅ Expresiones según gramática exacta
 Exp* Parser::parseCE() {
-    // CExp ::= Exp [(< | <= | ==) Exp]
+    // CExp ::= Exp [(< | <= | == | > | >=) Exp]  ← AMPLIAR
     Exp* left = parseE();
     
-    if (match(Token::LT) || match(Token::LE) || match(Token::EQ)) {
+    if (match(Token::LT) || match(Token::LE) || match(Token::EQ) || 
+        match(Token::GT) || match(Token::GE)) {  
         BinaryOp op;
         if (previous->type == Token::LT) op = LT_OP;
         else if (previous->type == Token::LE) op = LE_OP;
-        else op = EQ_OP;
+        else if (previous->type == Token::EQ) op = EQ_OP;
+        else if (previous->type == Token::GT) op = GT_OP;        
+        else if (previous->type == Token::GE) op = GE_OP;        
         
         Exp* right = parseE();
         return new BinaryExp(left, right, op);
