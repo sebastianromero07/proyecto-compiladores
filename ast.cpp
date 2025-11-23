@@ -12,7 +12,7 @@ TypeDecl::~TypeDecl() {}
 string TypeDecl::toString() const {
     switch (kind) {
         case INT_TYPE: return "int";
-        case UNSIGNED_TYPE: return "unsigned " + name;  // ← CAMBIO
+        case UNSIGNED_TYPE: return "unsigned " + name;
         case FLOAT_TYPE: return "float";
         case STRUCT_TYPE: return "struct " + name;
         case ID_TYPE: return name;
@@ -50,6 +50,50 @@ int BinaryExp::accept(Visitor* visitor) {
     return visitor->visit(this);
 }
 
+bool BinaryExp::isConstant(int& value) const {
+    int lv, rv;
+    if (!left->isConstant(lv) || !right->isConstant(rv)) {
+        return false;
+    }
+
+    switch (op) {
+        case PLUS_OP:
+            value = lv + rv;
+            return true;
+        case MINUS_OP:
+            value = lv - rv;
+            return true;
+        case MUL_OP:
+            value = lv * rv;
+            return true;
+        case DIV_OP:
+            if (rv == 0) return false;
+            value = lv / rv;
+            return true;
+        case LT_OP:
+            value = (lv < rv) ? 1 : 0;
+            return true;
+        case LE_OP:
+            value = (lv <= rv) ? 1 : 0;
+            return true;
+        case GT_OP:
+            value = (lv > rv) ? 1 : 0;
+            return true;
+        case GE_OP:
+            value = (lv >= rv) ? 1 : 0;
+            return true;
+        case EQ_OP:
+            value = (lv == rv) ? 1 : 0;
+            return true;
+        case NE_OP:
+            value = (lv != rv) ? 1 : 0;
+            return true;
+
+        default:
+            return false;
+    }
+}
+
 // ------------------ NumberExp ------------------
 NumberExp::NumberExp(int v) : value(v) {}
 
@@ -57,6 +101,11 @@ NumberExp::~NumberExp() {}
 
 int NumberExp::accept(Visitor* visitor) {
     return visitor->visit(this);
+}
+
+bool NumberExp::isConstant(int& value) const {
+    value = this->value;
+    return true;
 }
 
 // ------------------ FloatExp ------------------
@@ -86,6 +135,11 @@ int BoolExp::accept(Visitor* visitor) {
     return visitor->visit(this);
 }
 
+bool BoolExp::isConstant(int& value) const {
+    value = this->value ? 1 : 0;
+    return true;
+}
+
 // ------------------ StringExp ------------------
 StringExp::StringExp(string v) : value(v) {}
 
@@ -99,7 +153,7 @@ int StringExp::accept(Visitor* visitor) {
 FcallExp::FcallExp(string fname) : fname(fname) {}
 
 FcallExp::~FcallExp() {
-    for (auto arg : args) {
+    for (Exp* arg : args) {
         delete arg;
     }
 }

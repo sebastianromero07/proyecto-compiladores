@@ -49,6 +49,7 @@ public:
     virtual int accept(Visitor* visitor) = 0;
     virtual ~Exp() {}
     static string binopToChar(BinaryOp op);
+    virtual bool isConstant(int& value) const {return false;}
 };
 
 // Expresión binaria
@@ -61,6 +62,7 @@ public:
     BinaryExp(Exp* l, Exp* r, BinaryOp o);
     int accept(Visitor* visitor);
     ~BinaryExp();
+    bool isConstant(int& value) const override;
 };
 
 // Expresión numérica entera
@@ -71,6 +73,8 @@ public:
     NumberExp(int v);
     int accept(Visitor* visitor);
     ~NumberExp();
+
+    bool isConstant(int& value) const override;
 };
 
 // Expresión numérica flotante
@@ -101,6 +105,8 @@ public:
     BoolExp(bool v);
     int accept(Visitor* visitor);
     ~BoolExp();
+
+    bool isConstant(int& value) const override;
 };
 
 // Expresión de string
@@ -117,7 +123,7 @@ public:
 class FcallExp : public Exp {
 public:
     string fname;
-    list<Exp*> args;
+    vector<Exp*> args;
     
     FcallExp(string fname);
     int accept(Visitor* visitor);

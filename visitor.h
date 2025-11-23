@@ -107,21 +107,57 @@ public:
     void interpretar(Program* prog);
 };
 
-// Visitor para generar código assembly x86 AT&T
+
+class TypeCheckerVisitor : public Visitor {
+public:
+    unordered_map<string,int> fun_memoria;
+    int locales;
+    int type(Program* program);
+    int visit(BinaryExp* exp) override;
+    int visit(NumberExp* exp) override;
+    int visit(FloatExp* exp) override;
+    int visit(IdExp* exp) override;
+    int visit(BoolExp* exp) override;
+    int visit(StringExp* exp) override;
+    int visit(FcallExp* exp) override;
+    int visit(VarDec* vd) override;
+    int visit(StructDec* sd) override;
+    int visit(FunDec* fd) override;
+    int visit(AssignStm* stm) override;
+    int visit(PrintStm* stm) override;
+    int visit(IfStm* stm) override;
+    int visit(WhileStm* stm) override;
+    int visit(ForStm* stm) override;
+    int visit(ReturnStm* stm) override;
+    int visit(FcallStm* stm) override;
+    int visit(Body* body) override;
+    int visit(Program* prog) override;
+};
+
+// Visitor para generar código
 class CodeGenerator : public Visitor {
 private:
-    string code;
-    int labelCounter;
-    int stackOffset;
-    Environment<int> localVars;
-    unordered_map<string, FunDec*> functions;
-    unordered_map<string, StructDec*> structs;
-    
-    string newLabel();
-    void emit(const string& instruction);
-    
+    std::ostream& out;
+    unordered_map<string,string> stringLabels;
+    int stringCounter = 0;
+    string getStringLabel(const string& s) {
+        if (stringLabels.count(s)) return stringLabels[s];
+        string label = ".S" + to_string(stringCounter++);
+        stringLabels[s] = label;
+        return label;
+    }
 public:
-    CodeGenerator();
+    TypeCheckerVisitor typeChecker;
+    unordered_map<string,int> fun_memoria;
+    Environment<int> localVars;
+    unordered_map<string, bool> globalVars;
+    int offset = -8;
+    int labelCounter = 0;
+    bool inFunction = false;
+    string currentFunction;
+    
+    
+    CodeGenerator(std::ostream& out) : out(out) {}
     
     // Implementaciones para expresiones
     int visit(BinaryExp* exp) override;
@@ -151,7 +187,7 @@ public:
     int visit(Program* prog) override;
     
     // Método para generar código
-    string generateCode(Program* prog);
+    int generar(Program* prog);
 };
 
 // Visitor para imprimir el AST (útil para debug)

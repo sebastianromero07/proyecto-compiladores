@@ -44,17 +44,19 @@ bool Parser::isAtEnd() {
 }
 
 bool Parser::isTypeStart() {
-    return check(Token::UNSIGNED) || check(Token::STRUCT) || check(Token::ID);
+    if (check(Token::UNSIGNED) || check(Token::STRUCT)) {
+        return true;
+    }
+    if (check(Token::ID)) {
+        string id = current->text;
+        return (id == "int" || id == "float");
+    }
+    return false;
+
 }
 
 bool Parser::isLocalDecl() {
-    if (check(Token::UNSIGNED)) return true;
-    if (check(Token::ID)) {
-        string id = current->text;
-        return !(id == "if" || id == "while" || id == "for" || 
-                id == "return" || id == "printf");
-    }
-    return false;
+    return isTypeStart();
 }
 
 Program* Parser::parseProgram() {
