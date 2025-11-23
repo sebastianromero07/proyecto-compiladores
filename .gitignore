@@ -1,0 +1,88 @@
+# ===================== C++ / Compilador =====================
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.s
+*.asm
+*.i
+*.ii
+
+# Objetos compilados
+build/
+dist/
+*.obj
+CMakeFiles/
+cmake_build_debug/
+cmake_build_release/
+
+# IDEs y Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# ===================== Node.js / Web App =====================
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+.env.local
+.env.*.local
+dist/
+build/
+
+# Frontend específico
+web-app/frontend/dist/
+web-app/frontend/.vite/
+web-app/frontend/node_modules/
+
+# Backend específico
+web-app/backend/node_modules/
+web-app/backend/.env
+
+# ===================== Archivos generados =====================
+core/outputs/
+core/inputs/web_*.txt
+core/inputs/web_*_tokens.txt
+
+# Tokens y archivos temporales
+*.tokens
+*.log
+*.tmp
+.tmp/
+
+# ===================== Git =====================
+.git/
+.gitkeep
+
+# ===================== OS =====================
+.DS_Store
+Thumbs.db
+Desktop.ini
+.directory
+
+# ===================== Python =====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ===================== Otros =====================
+*.bak
+*.backup
+*.swp
+.history/
+.viminfo

@@ -1,0 +1,14 @@
+#include<stdio.h>
+
+int main(){
+    int x = 5;
+    int y = 10;
+    
+    if (x > y) {
+        printf("x es mayor\n");
+    } else {
+        printf("y es mayor: %d\n", y);
+    }
+    
+    return 0;
+}

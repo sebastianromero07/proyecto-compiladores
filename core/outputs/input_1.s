@@ -10,6 +10,7 @@ sumar:
     subq $24, %rsp
     movq %rdi, -8(%rbp)
     movq %rsi, -16(%rbp)
+    movq $0, -24(%rbp)
     movq -8(%rbp), %rax
     pushq %rax
     movq -16(%rbp), %rax
@@ -27,6 +28,8 @@ main:
     pushq %rbp
     movq %rsp, %rbp
     subq $16, %rsp
+    movq $0, -8(%rbp)
+    movq $0, -16(%rbp)
     movq $0, %rax
     movq %rax, -8(%rbp)
     movq $0, %rax
