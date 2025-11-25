@@ -138,14 +138,29 @@ public:
 };
 
 // Declaración de variables - HEREDA DE Stm
+// En ast.h, línea ~133, REEMPLAZAR la clase VarDec:
 class VarDec : public Stm {
 public:
     TypeDecl* type;
-    list<string> vars;
+    
+    // ✅ NUEVO: Estructura para variables con inicialización
+    struct VarInit {
+        string name;
+        Exp* init_value;  // nullptr si no tiene inicialización
+        
+        VarInit(string n, Exp* init = nullptr) : name(n), init_value(init) {}
+    };
+    
+    list<VarInit> vars;  // ✅ CAMBIO: De list<string> a list<VarInit>
     
     VarDec(TypeDecl* t);
     int accept(Visitor* visitor);
     ~VarDec();
+    
+    // ✅ NUEVO: Método para agregar variables
+    void addVar(string name, Exp* init_value = nullptr) {
+        vars.emplace_back(name, init_value);
+    }
 };
 
 // Declaración de estructura

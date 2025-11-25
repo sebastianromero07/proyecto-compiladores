@@ -4,6 +4,7 @@
 #include "scanner.h"
 #include "ast.h"
 
+
 class Parser {
 private:
     Scanner* scanner;

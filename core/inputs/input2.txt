@@ -1,14 +1,17 @@
-#include<stdio.h>
+#include <stdio.h>
 
-int main(){
-    int x = 5;
-    int y = 10;
-    
+int main() {
+    float x = 9.5;
+    float y = 10.5;
+    unsigned int z = -10;
+
     if (x > y) {
         printf("x es mayor\n");
     } else {
-        printf("y es mayor: %d\n", y);
+        printf("y es mayor: %f\n", y);
     }
-    
+
+    printf("El valor de z (unsigned): %u\n", z);
+
     return 0;
 }

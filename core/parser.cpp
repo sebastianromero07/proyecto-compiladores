@@ -101,12 +101,12 @@ void Parser::parseGlobalDecl(Program* prog) {
         // Es variable: Type VarList ;
         // Crear VarDec y agregar el primer identificador
         VarDec* vd = new VarDec(type);
-        vd->vars.push_back(name);
+        vd->addVar(name);
         
         // Parsear resto de VarList: (, id)*
         while (match(Token::COMA)) {
             if (match(Token::ID)) {
-                vd->vars.push_back(previous->text);
+                vd->addVar(previous->text);
             }
         }
         
@@ -146,17 +146,34 @@ TypeDecl* Parser::parseType() {
     return nullptr;
 }
 
+// En parser.cpp, MODIFICAR el método parseVarDec() alrededor de la línea 130:
 VarDec* Parser::parseVarDec() {
     TypeDecl* type = parseType();
     VarDec* vd = new VarDec(type);
     
-    // VarList ::= id (, id)*
+    // ✅ NUEVO: Parsear variable con posible inicialización
     if (match(Token::ID)) {
-        vd->vars.push_back(previous->text);
+        string varname = previous->text;
+        Exp* init_value = nullptr;
         
+        // Verificar si hay inicialización: int x = 5
+        if (match(Token::ASSIGN)) {
+            init_value = parseCE();  // Parsear valor inicial
+        }
+        
+        vd->addVar(varname, init_value);
+        
+        // Parsear variables adicionales: int x = 5, y = 10
         while (match(Token::COMA)) {
             if (match(Token::ID)) {
-                vd->vars.push_back(previous->text);
+                string nextVar = previous->text;
+                Exp* nextInit = nullptr;
+                
+                if (match(Token::ASSIGN)) {
+                    nextInit = parseCE();
+                }
+                
+                vd->addVar(nextVar, nextInit);
             }
         }
     }
@@ -252,7 +269,6 @@ Stm* Parser::parseStm() {
     } else if (match(Token::PRINTF)) {
         return parsePrintStm();
     } else if (match(Token::ID)) {
-        // Puede ser asignación o llamada a función
         string id = previous->text;
         if (match(Token::ASSIGN)) {
             // Es asignación: id = CExp ;
@@ -263,7 +279,6 @@ Stm* Parser::parseStm() {
             // Es llamada a función
             FcallExp* fcall = new FcallExp(id);
             match(Token::LPAREN);
-            
             if (!check(Token::RPAREN)) {
                 do {
                     fcall->args.push_back(parseCE());

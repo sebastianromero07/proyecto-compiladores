@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include "environment.h"
 #include <string>
+#include <ostream>
 
 using namespace std;
 
@@ -139,6 +140,8 @@ class CodeGenerator : public Visitor {
 private:
     std::ostream& out;
     unordered_map<string,string> stringLabels;
+    unordered_map<string, int> globalInitializers;
+    int labelCount;
     int stringCounter = 0;
     string getStringLabel(const string& s) {
         if (stringLabels.count(s)) return stringLabels[s];
@@ -151,11 +154,13 @@ public:
     unordered_map<string,int> fun_memoria;
     Environment<int> localVars;
     unordered_map<string, bool> globalVars;
+    unordered_map<string, TypeDecl::TypeKind> varTypes; // ✅ Track variable types
     int offset = -8;
     int labelCounter = 0;
     bool inFunction = false;
+    bool isFloat = false; // ✅ Track if last expression was float
+    bool isUnsigned = false; // ✅ Track if last expression was unsigned
     string currentFunction;
-    
     
     CodeGenerator(std::ostream& out) : out(out) {}
     

@@ -1,30 +1,40 @@
-int a, b;
-
-int sumar(int x, int y) {
-    int r;
-    r = x + y;
-    return r;
-}
+#include <stdio.h>
 
 int main() {
-    int i, acc;
+    int a = 10;
+    unsigned int b = 20;
+    float c = 3.5;
+    float d = 2.0;
 
-    i = 0;
-    acc = 0;
+    printf("int + int = %d\n", a + a);
+    printf("int - int = %d\n", a - a);
+    printf("int * int = %d\n", a * a);
+    printf("int / int = %d\n", a / a);
 
-    while (i < 5) {
-        acc = acc + i;
-        i = i + 1;
-    }
+    printf("unsigned + unsigned = %u\n", b + b);
+    printf("unsigned - unsigned = %u\n", b - b);
+    printf("unsigned * unsigned = %u\n", b * b);
+    printf("unsigned / unsigned = %u\n", b / b);
 
-    printf(acc);
+    printf("float + float = %f\n", c + d);
+    printf("float - float = %f\n", c - d);
+    printf("float * float = %f\n", c * d);
+    printf("float / float = %f\n", c / d);
 
-    for (i = 0; i < 3; i = i + 1) {
-        printf(i);
-    }
+    printf("int + unsigned = %u\n", a + b);
+    printf("int - unsigned = %u\n", a - b);
+    printf("int * unsigned = %u\n", a * b);
+    printf("int / unsigned = %u\n", a / b);
 
-    a = sumar(acc, 3);
-    printf(a);
+    printf("int + float = %f\n", a + c);
+    printf("int - float = %f\n", a - c);
+    printf("int * float = %f\n", a * c);
+    printf("int / float = %f\n", a / c);
 
-    return a;
+    printf("unsigned + float = %f\n", b + c);
+    printf("unsigned - float = %f\n", b - c);
+    printf("unsigned * float = %f\n", b * c);
+    printf("unsigned / float = %f\n", b / c);
+
+    return 0;
 }
