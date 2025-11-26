@@ -1,25 +1,33 @@
 <template>
-  <div class="register-view bg-gray-900 text-white p-4 rounded-lg h-full overflow-y-auto">
-    <h3 class="text-lg font-bold mb-4">🔧 Registros CPU</h3>
-    <div class="grid grid-cols-2 gap-3">
-      <div v-for="(value, reg) in registers" :key="reg"
-           class="register-item p-2 bg-gray-800 rounded"
-           :class="{ 'bg-yellow-600': isModified(reg) }">
-        <span class="font-mono text-sm">{{ reg }}:</span>
-        <span class="font-mono ml-2 text-green-400">{{ formatValue(value) }}</span>
-      </div>
+  <div class="bg-black h-full flex flex-col overflow-hidden">
+    <div class="px-4 py-2 border-b border-red-500/30 bg-gradient-to-r from-gray-900 to-black flex-shrink-0">
+      <h3 class="text-sm font-bold text-red-400 tracking-wide">REGISTERS</h3>
     </div>
     
-    <!-- Stack Pointer Visual -->
-    <div class="mt-4 p-3 bg-blue-900 rounded">
-      <h4 class="font-bold">Stack Pointer</h4>
-      <div class="font-mono">RSP: {{ formatValue(registers.rsp) }}</div>
-      <div class="font-mono">RBP: {{ formatValue(registers.rbp) }}</div>
-    </div>
-
-    <!-- Si no hay registros, mostrar mensaje -->
-    <div v-if="Object.keys(registers).length === 0" class="text-center text-gray-400 mt-8">
-      <p>📊 Los registros aparecerán aquí después de compilar</p>
+    <div class="flex-1 overflow-y-auto p-3 custom-scrollbar bg-black">
+      <div class="grid grid-cols-2 gap-2">
+        <div 
+          v-for="(value, name) in registers" 
+          :key="name"
+          :class="[
+            'p-2 rounded border transition-all duration-300',
+            isModified(name) 
+              ? 'bg-red-500/10 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' 
+              : 'bg-gray-900/50 border-gray-700 hover:border-gray-600'
+          ]"
+        >
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-gray-400 font-bold uppercase text-[10px] tracking-wider">{{ name }}</span>
+            <span v-if="isModified(name)" class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+          </div>
+          <div class="font-mono text-xs">
+            <div :class="isModified(name) ? 'text-red-400' : 'text-cyan-400'" class="font-semibold">
+              {{ formatHex(value) }}
+            </div>
+            <div class="text-gray-600 text-[10px] mt-0.5">{{ value }}</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -30,7 +38,7 @@ export default {
   props: {
     registers: {
       type: Object,
-      default: () => ({})
+      required: true
     },
     modifiedRegs: {
       type: Array,
@@ -38,15 +46,26 @@ export default {
     }
   },
   methods: {
-    formatValue(value) {
-      if (typeof value === 'number') {
-        return `0x${value.toString(16).padStart(8, '0')} (${value})`;
-      }
-      return value || '0x00000000 (0)';
+    formatHex(val) {
+      if (val === undefined || val === null) return '0x0';
+      return `0x${(val >>> 0).toString(16).toUpperCase().padStart(8, '0')}`;
     },
-    isModified(reg) {
-      return this.modifiedRegs?.includes(reg) || false;
+    isModified(regName) {
+      return this.modifiedRegs.includes(regName);
     }
   }
 }
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #000;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ef4444, #06b6d4);
+  border-radius: 2px;
+}
+</style>

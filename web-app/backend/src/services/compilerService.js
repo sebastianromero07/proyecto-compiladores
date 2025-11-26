@@ -1,14 +1,19 @@
 import { spawn } from 'child_process';
 import fs from 'fs-extra';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export class CompilerService {
   constructor() {
-    this.projectRoot = path.resolve('../../'); // Root del proyecto
+    this.projectRoot = path.resolve(__dirname, '../../../../'); // Root del proyecto
     this.coreDir = path.join(this.projectRoot, 'core');
     this.inputsDir = path.join(this.coreDir, 'inputs');      // ✅ inputs está en core/
     this.outputsDir = path.join(this.coreDir, 'outputs');    // ✅ outputs está en core/
-    
+
     console.log('📁 Directorios configurados:');
     console.log('  Project Root:', this.projectRoot);
     console.log('  Core:', this.coreDir);
@@ -21,12 +26,12 @@ export class CompilerService {
       // ✅ Asegurar que las carpetas existan
       await fs.ensureDir(this.inputsDir);
       await fs.ensureDir(this.outputsDir);
-      
+
       // 1. Crear archivo temporal
       const timestamp = Date.now();
       const inputFile = path.join(this.inputsDir, `web_input_${timestamp}.txt`);
       await fs.writeFile(inputFile, sourceCode);
-      
+
       console.log(`📝 Archivo creado: ${inputFile}`);
 
       // 2. Verificar que el compilador existe
@@ -36,7 +41,7 @@ export class CompilerService {
         path.join(this.coreDir, 'compiler.exe'),
         path.join(this.coreDir, 'a.exe')
       ];
-      
+
       let compilerPath = null;
       for (const p of compilerPaths) {
         if (await fs.pathExists(p)) {
@@ -45,7 +50,7 @@ export class CompilerService {
           break;
         }
       }
-      
+
       if (!compilerPath) {
         // Listar archivos en core para debug
         const coreFiles = await fs.readdir(this.coreDir);
@@ -60,15 +65,17 @@ export class CompilerService {
       if (result.success) {
         // ✅ CORREGIDO: Buscar assembly en inputs/ (dentro de core/)
         const assemblyFile = path.join(this.inputsDir, `web_input_${timestamp}.s`);
-        
+
         let assembly = '';
         if (await fs.pathExists(assemblyFile)) {
           assembly = await fs.readFile(assemblyFile, 'utf8');
           console.log(`📄 Assembly encontrado: ${assemblyFile}`);
-          
+
           // Mover a outputs/ (dentro de core/)
           const destFile = path.join(this.outputsDir, `web_input_${timestamp}.s`);
-          await fs.move(assemblyFile, destFile);
+          // Usar copy + remove en lugar de move para evitar error EFTYPE
+          await fs.copy(assemblyFile, destFile);
+          await fs.remove(assemblyFile);
           console.log(`📁 Assembly movido a: ${destFile}`);
         } else {
           console.log(`⚠️ No se encontró archivo assembly en: ${assemblyFile}`);
@@ -100,16 +107,16 @@ export class CompilerService {
       console.log(`🔨 Ejecutando: ${compilerPath}`);
       console.log(`📂 Input file: ${inputFile}`);
       console.log(`📂 Working dir: ${this.coreDir}`);
-      
+
       // ✅ IMPORTANTE: Usar ruta relativa desde core/
       const relativeInputFile = path.relative(this.coreDir, inputFile);
       console.log(`📂 Relative path: ${relativeInputFile}`);
-      
+
       const process = spawn(compilerPath, [relativeInputFile], {
         cwd: this.coreDir,  // Ejecutar desde core/
         stdio: ['pipe', 'pipe', 'pipe']
       });
-      
+
       let stdout = '';
       let stderr = '';
 
@@ -153,36 +160,36 @@ export class CompilerService {
     // Extraer tokens de la salida de tu compilador
     const lines = output.split('\n');
     const tokens = [];
-    
+
     for (const line of lines) {
       const trimmedLine = line.trim();
       // Buscar diferentes formatos de tokens que podría generar tu compilador
-      if (trimmedLine.includes('TOKEN(') || 
-          trimmedLine.includes('Token:') || 
-          trimmedLine.includes('token') ||
-          (trimmedLine.includes('ID:') || trimmedLine.includes('NUM:') || trimmedLine.includes('OP:'))) {
+      if (trimmedLine.includes('TOKEN(') ||
+        trimmedLine.includes('Token:') ||
+        trimmedLine.includes('token') ||
+        (trimmedLine.includes('ID:') || trimmedLine.includes('NUM:') || trimmedLine.includes('OP:'))) {
         tokens.push(trimmedLine);
       }
     }
-    
+
     console.log(`🏷️ Tokens extraídos: ${tokens.length}`);
     if (tokens.length > 0) {
       console.log('🏷️ Primer token:', tokens[0]);
     }
-    
+
     return tokens;
   }
 
   parseAST(output) {
     // Extraer información del AST si tu compilador la genera
-    const astLines = output.split('\n').filter(line => 
-      line.includes('AST') || 
-      line.includes('Node') || 
+    const astLines = output.split('\n').filter(line =>
+      line.includes('AST') ||
+      line.includes('Node') ||
       line.includes('Expression') ||
       line.includes('Statement')
     );
-    
-    return { 
+
+    return {
       message: 'AST parsing implementado',
       nodes: astLines,
       hasAST: astLines.length > 0
@@ -193,21 +200,21 @@ export class CompilerService {
     // Extraer pasos de ejecución del intérprete
     const lines = output.split('\n');
     const steps = [];
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
-      if (trimmed.includes('=') || 
-          trimmed.includes('printf') || 
-          trimmed.includes('->') ||
-          trimmed.includes('Executing') ||
-          trimmed.includes('Result:')) {
+      if (trimmed.includes('=') ||
+        trimmed.includes('printf') ||
+        trimmed.includes('->') ||
+        trimmed.includes('Executing') ||
+        trimmed.includes('Result:')) {
         steps.push({
           line: trimmed,
           timestamp: new Date().toISOString()
         });
       }
     }
-    
+
     console.log(`⚡ Execution steps: ${steps.length}`);
     return steps;
   }
@@ -219,14 +226,14 @@ export class CompilerService {
       path.join(this.coreDir, 'compiler.exe'),
       path.join(this.coreDir, 'a.exe')
     ];
-    
+
     for (const p of compilerPaths) {
       if (await fs.pathExists(p)) {
         console.log(`✅ Compilador disponible: ${p}`);
         return true;
       }
     }
-    
+
     console.log('❌ No se encontró compilador en ninguna ubicación');
     return false;
   }

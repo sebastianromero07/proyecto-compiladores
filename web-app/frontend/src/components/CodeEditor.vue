@@ -1,33 +1,38 @@
 <template>
-  <div class="h-full flex flex-col">
-    <div class="bg-slate-800 p-3 border-b border-slate-700 flex justify-between items-center">
-      <h3 class="font-bold">📝 Editor de Código C</h3>
-      <button 
-        @click="$emit('compile')"
-        :disabled="isLoading"
-        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded transition-colors"
-      >
-        {{ isLoading ? '⏳ Compilando...' : '🔨 Compilar' }}
-      </button>
+  <div class="h-full flex flex-col bg-black overflow-hidden">
+    <div class="bg-gradient-to-r from-gray-900 to-black px-4 py-2 border-b border-cyan-500/30 flex-shrink-0">
+      <h3 class="text-sm font-bold text-cyan-400 tracking-wide">SOURCE CODE</h3>
     </div>
     
-    <div class="flex-1">
-      <textarea 
-        v-model="localCode"
-        @input="$emit('update:modelValue', localCode)"
-        class="w-full h-full bg-slate-900 text-white font-mono text-sm p-4 resize-none outline-none border-none"
-        placeholder="Escribe tu código C aquí..."
-      ></textarea>
+    <div class="flex-1 overflow-hidden bg-black">
+      <div class="h-full flex overflow-hidden bg-black">
+        <!-- Line numbers -->
+        <div class="bg-gray-900/50 px-3 py-4 border-r border-cyan-500/20 overflow-y-auto flex-shrink-0" style="scrollbar-width: none;">
+          <div class="font-mono text-xs text-gray-600 space-y-0.5">
+            <div v-for="n in lineCount" :key="n" class="leading-6">{{ n }}</div>
+          </div>
+        </div>
+        
+        <!-- Code area -->
+        <textarea 
+          v-model="localCode"
+          @input="handleInput"
+          class="flex-1 bg-black text-gray-100 font-mono text-sm p-4 resize-none outline-none border-none leading-6 overflow-y-auto"
+          placeholder="Write your C code here..."
+          spellcheck="false"
+        ></textarea>
+      </div>
     </div>
 
-    <!-- Ejemplos rápidos -->
-    <div class="bg-slate-800 p-2 border-t border-slate-700">
-      <div class="flex gap-2 text-xs">
+    <!-- Quick Examples -->
+    <div class="bg-gradient-to-r from-gray-900 to-black px-4 py-2 border-t border-cyan-500/30 flex-shrink-0">
+      <div class="flex gap-2 text-xs items-center">
+        <span class="text-gray-500 mr-2 font-mono">EXAMPLES:</span>
         <button 
           v-for="example in examples" 
           :key="example.name"
           @click="loadExample(example)"
-          class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition-colors"
+          class="bg-gray-800 hover:bg-gray-700 border border-cyan-500/30 hover:border-cyan-500 px-3 py-1 rounded transition-all text-cyan-400 font-mono"
         >
           {{ example.name }}
         </button>
@@ -42,18 +47,32 @@ export default {
     modelValue: String,
     isLoading: Boolean
   },
-  emits: ['update:modelValue', 'compile'],
+  emits: ['update:modelValue', 'compile', 'download'],
   data() {
     return {
       localCode: this.modelValue,
       examples: [
         {
-          name: 'Básico',
+          name: 'Basic',
           code: `#include<stdio.h>
 
 int main(){
     int x = 5;
-    printf("Hola: %d\\n", x);
+    printf("Hello: %d\\n", x);
+    return 0;
+}`
+        },
+        {
+          name: 'Function',
+          code: `#include<stdio.h>
+
+int sum(int a, int b){
+    return a + b;
+}
+
+int main(){
+    int result = sum(5, 3);
+    printf("Result: %d\\n", result);
     return 0;
 }`
         },
@@ -66,28 +85,19 @@ int main(){
     int y = 10;
     
     if (x > y) {
-        printf("x es mayor\\n");
+        printf("x is greater\\n");
     } else {
-        printf("y es mayor\\n");
+        printf("y is greater\\n");
     }
-    return 0;
-}`
-        },
-        {
-          name: 'Función',
-          code: `#include<stdio.h>
-
-int suma(int a, int b){
-    return a + b;
-}
-
-int main(){
-    int result = suma(5, 3);
-    printf("Resultado: %d\\n", result);
     return 0;
 }`
         }
       ]
+    }
+  },
+  computed: {
+    lineCount() {
+      return (this.localCode || '').split('\n').length;
     }
   },
   watch: {
@@ -96,6 +106,9 @@ int main(){
     }
   },
   methods: {
+    handleInput() {
+      this.$emit('update:modelValue', this.localCode);
+    },
     loadExample(example) {
       this.localCode = example.code;
       this.$emit('update:modelValue', this.localCode);
@@ -103,3 +116,18 @@ int main(){
   }
 }
 </script>
+
+<style scoped>
+textarea {
+  tab-size: 4;
+  caret-color: #06b6d4;
+}
+
+textarea::placeholder {
+  color: #4b5563;
+}
+
+textarea::selection {
+  background: rgba(6, 182, 212, 0.3);
+}
+</style>

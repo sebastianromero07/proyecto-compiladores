@@ -8,10 +8,21 @@ export const compilerStore = {
       const response = await axios.post(`${API_BASE}/compile`, {
         sourceCode: sourceCode
       });
-      
+
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Error de compilación');
+    }
+  },
+
+  async startExecution(assemblyCode) {
+    try {
+      const response = await axios.post(`${API_BASE}/execute/start`, {
+        sourceCode: assemblyCode
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error iniciando ejecución');
     }
   },
 
@@ -20,7 +31,7 @@ export const compilerStore = {
       const response = await axios.post(`${API_BASE}/execute/step`, {
         direction: 'forward'
       });
-      
+
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Error en step forward');
@@ -32,7 +43,7 @@ export const compilerStore = {
       const response = await axios.post(`${API_BASE}/execute/step`, {
         direction: 'backward'
       });
-      
+
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Error en step backward');
