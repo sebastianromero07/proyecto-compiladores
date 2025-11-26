@@ -1,6 +1,6 @@
 #include <stdio.h>
-int x = 9.5;
-int y = 10.5;
+int x = 9;
+int y = 10;
 unsigned int z = 10;
 int main() {
 
@@ -9,7 +9,7 @@ int main() {
     if (x > y) {
         printf("x es mayor\n");
     } else {
-        printf("y es mayor: %f\n", y);
+        printf("y es mayor: %d\n", y);
     }
 
     printf("El valor de z (unsigned): %u\n", z);

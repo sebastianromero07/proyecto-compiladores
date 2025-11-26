@@ -282,9 +282,14 @@ int CodeGenerator::visit(IdExp* exp) {
             }
         }
     } else if (globalVars.count(exp->value)) {
-        // Asumir int por ahora para globales o necesitaríamos mapa de tipos globales
         out << "    movq " << exp->value << "(%rip), %rax\n";
         isFloat = false;
+        // Track unsigned type for global variables
+        if (varTypes.count(exp->value) && varTypes[exp->value] == TypeDecl::UNSIGNED_TYPE) {
+            isUnsigned = true;
+        } else {
+            isUnsigned = false;
+        }
     }
     return 0;
 }
@@ -391,6 +396,14 @@ int CodeGenerator::visit(VarDec* vd) {
         if (!inFunction) {
             // Variables globales
             globalVars[name] = true;
+            
+            // Store initialization value if present
+            if (var.init_value) {
+                int value;
+                if (var.init_value->isConstant(value)) {
+                    globalInitializers[name] = value;
+                }
+            }
         } else {
             // ✅ Variables locales CON inicialización
             localVars.add_var(name, offset);
@@ -476,24 +489,33 @@ int CodeGenerator::visit(FunDec* fd) {
 }
 int CodeGenerator::visit(AssignStm* stm) {
     stm->rhs->accept(this);  // valor en %rax o %xmm0
-    
-    // Verificar tipo de variable destino
+
     bool destIsFloat = (varTypes.count(stm->id) && varTypes[stm->id] == TypeDecl::FLOAT_TYPE);
-    
+    bool destIsDouble = false; // Si soportas double, agrega lógica aquí
+    bool destIsInt = (varTypes.count(stm->id) && varTypes[stm->id] == TypeDecl::INT_TYPE);
+
     if (globalVars.count(stm->id)) {
-        out << "    movq %rax, " << stm->id << "(%rip)\n"; // TODO: Global floats
+        // Variables globales
+        if (destIsFloat) {
+            if (!isFloat) {
+                out << "    cvtsi2sd %rax, %xmm0\n";
+            }
+            out << "    movsd %xmm0, " << stm->id << "(%rip)\n";
+        } else {
+            if (isFloat) {
+                out << "    cvttsd2si %xmm0, %rax\n";
+            }
+            out << "    movq %rax, " << stm->id << "(%rip)\n";
+        }
     } else {
         int off = localVars.lookup(stm->id);
         if (destIsFloat) {
             if (!isFloat) {
-                // Convertir int a float
                 out << "    cvtsi2sd %rax, %xmm0\n";
             }
             out << "    movsd %xmm0, " << off << "(%rbp)\n";
         } else {
-            // Destino es int
             if (isFloat) {
-                // Convertir float a int (truncar)
                 out << "    cvttsd2si %xmm0, %rax\n";
             }
             out << "    movq %rax, " << off << "(%rbp)\n";
@@ -501,7 +523,6 @@ int CodeGenerator::visit(AssignStm* stm) {
     }
     return 0;
 }
-
 int CodeGenerator::visit(PrintStm* stm) {
     if (stm->args.empty()) return 0;
     
@@ -632,7 +653,6 @@ int CodeGenerator::visit(ReturnStm* stm) {
 }
 
 int CodeGenerator::visit(FcallStm* stm) {
-    out << "    # DEBUG: FcallStm " << stm->fcall->fname << "\n";
     if (!stm->fcall) return 0;
 
     if (stm->fcall->fname == "printf") {
@@ -642,41 +662,40 @@ int CodeGenerator::visit(FcallStm* stm) {
         StringExp* formatExp = dynamic_cast<StringExp*>(firstArg);
 
         if (formatExp) {
-            // Caso: printf("string") o printf("format %d", var)
             string label = "str_" + to_string(labelCount++);
             out << ".data\n";
             out << label << ": .string " << formatExp->value << "\n";
             out << ".text\n";
+
+            // Detectar formato
+            bool expectFloat = formatExp->value.find("%f") != string::npos;
+            bool expectInt   = formatExp->value.find("%d") != string::npos;
+            bool expectUnsigned = formatExp->value.find("%u") != string::npos;
 
             if (stm->fcall->args.size() == 1) {
                 out << "    leaq " << label << "(%rip), %rdi\n";
                 out << "    movl $0, %eax\n";
                 out << "    call printf@PLT\n";
             } else {
-                for (size_t i = 1; i < stm->fcall->args.size() && i < 6; i++) {
-                    stm->fcall->args[i]->accept(this);
-                    switch (i) {
-                        case 1: out << "    movq %rax, %rsi\n"; break;
-                        case 2: out << "    movq %rax, %rdx\n"; break;
-                        case 3: out << "    movq %rax, %rcx\n"; break;
-                        case 4: out << "    movq %rax, %r8\n"; break;
-                        case 5: out << "    movq %rax, %r9\n"; break;
-                    }
+                Exp* arg = stm->fcall->args[1];
+                arg->accept(this);
+
+                if (expectFloat && !isFloat) {
+                    out << "    cvtsi2sd %rax, %xmm0\n";
+                    isFloat = true;
+                }
+                if (expectFloat) {
+                    out << "    movsd %xmm0, %xmm0\n";
+                    out << "    movl $1, %eax\n";
+                } else {
+                    out << "    movq %rax, %rsi\n";
+                    out << "    movl $0, %eax\n";
                 }
                 out << "    leaq " << label << "(%rip), %rdi\n";
-                out << "    movl $0, %eax\n";
                 out << "    call printf@PLT\n";
             }
-        } else {
-            // Caso: printf(variable) o printf(expr)
-            stm->fcall->args[0]->accept(this); // evalúa variable/expresión en %rax
-            out << "    movq %rax, %rsi\n";
-            out << "    leaq print_fmt(%rip), %rdi\n";
-            out << "    movl $0, %eax\n";
-            out << "    call printf@PLT\n";
         }
     } else {
-        // Otras funciones
         stm->fcall->accept(this);
     }
     return 0;
@@ -691,16 +710,12 @@ int CodeGenerator::visit(Body* body) {
     }
     for (auto stm : body->stmts) {
         out << "    # DEBUG: Body statement\n";
-        FcallStm* fcallStm = dynamic_cast<FcallStm*>(stm);
-        if (fcallStm && fcallStm->fcall->fname == "printf") {
-            fcallStm->accept(this);
-        } else {
-            stm->accept(this);
-        }
+        stm->accept(this); // SIEMPRE recorre todos los statements
     }
     localVars.remove_level();
     return 0;
 }
+
 int CodeGenerator::visit(Program* prog) {
     globalVars.clear();
 
@@ -717,7 +732,11 @@ int CodeGenerator::visit(Program* prog) {
 
     for (auto it = globalVars.begin(); it != globalVars.end(); ++it) {
         if (it->second) {
-            out << it->first << ": .quad 0\n";
+            int initValue = 0;
+            if (globalInitializers.count(it->first)) {
+                initValue = globalInitializers[it->first];
+            }
+            out << it->first << ": .quad " << initValue << "\n";
         }
     }
 

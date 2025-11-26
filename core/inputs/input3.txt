@@ -1,0 +1,26 @@
+#include <stdio.h>
+
+int main() {
+    int i = 5;
+    float f = 2.5f;
+    char c = 4;
+    short s = -3;
+
+    printf("=== Promociones en printf ===\n");
+    printf("float -> double: %f\n", f);        // float debe imprimirse bien
+    printf("char  -> int: %d\n", c);          // char → int
+    printf("short -> int: %d\n", s);          // short → int
+
+    printf("\n=== Usual arithmetic conversions ===\n");
+    float r1 = i + f;                          // int -> float
+    printf("int + float = %f\n", r1);          // debe ser 7.500000
+
+    double r2 = i + 1.2;                       // int -> double
+    printf("int + double = %f\n", r2);         // debe ser 6.200000
+
+    printf("\n=== Ternaria con mezcla de tipos ===\n");
+    float t = (i > 3) ? i : f;                 // int -> float
+    printf("ternaria (int/float) = %f\n", t);  // debe ser 5.000000
+
+    return 0;
+}
