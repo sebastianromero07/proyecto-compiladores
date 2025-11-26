@@ -12,18 +12,18 @@ main:
     movq $20, %rax
     movq %rax, -16(%rbp)
 .data
-.FL1594377488: .double 3.5
+.FL0: .double 3.5
 .text
-    movsd .FL1594377488(%rip), %xmm0
+    movsd .FL0(%rip), %xmm0
     movsd %xmm0, -24(%rbp)
 .data
-.FL1594377489: .double 2
+.FL1: .double 2
 .text
-    movsd .FL1594377489(%rip), %xmm0
+    movsd .FL1(%rip), %xmm0
     movsd %xmm0, -32(%rbp)
     # DEBUG: Body statement
 .data
-str_1594377490: .string "int + int = %d\n"
+str_2: .string "int + int = %d\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -33,11 +33,11 @@ str_1594377490: .string "int + int = %d\n"
     addq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377490(%rip), %rdi
+    leaq str_2(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377491: .string "int - int = %d\n"
+str_3: .string "int - int = %d\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -47,11 +47,11 @@ str_1594377491: .string "int - int = %d\n"
     subq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377491(%rip), %rdi
+    leaq str_3(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377492: .string "int * int = %d\n"
+str_4: .string "int * int = %d\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -61,11 +61,11 @@ str_1594377492: .string "int * int = %d\n"
     imulq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377492(%rip), %rdi
+    leaq str_4(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377493: .string "int / int = %d\n"
+str_5: .string "int / int = %d\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -77,11 +77,11 @@ str_1594377493: .string "int / int = %d\n"
     idivq %rcx
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377493(%rip), %rdi
+    leaq str_5(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377494: .string "unsigned + unsigned = %u\n"
+str_6: .string "unsigned + unsigned = %u\n"
 .text
     movq -16(%rbp), %rax
     pushq %rax
@@ -91,11 +91,11 @@ str_1594377494: .string "unsigned + unsigned = %u\n"
     addq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377494(%rip), %rdi
+    leaq str_6(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377495: .string "unsigned - unsigned = %u\n"
+str_7: .string "unsigned - unsigned = %u\n"
 .text
     movq -16(%rbp), %rax
     pushq %rax
@@ -105,11 +105,11 @@ str_1594377495: .string "unsigned - unsigned = %u\n"
     subq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377495(%rip), %rdi
+    leaq str_7(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377496: .string "unsigned * unsigned = %u\n"
+str_8: .string "unsigned * unsigned = %u\n"
 .text
     movq -16(%rbp), %rax
     pushq %rax
@@ -119,11 +119,11 @@ str_1594377496: .string "unsigned * unsigned = %u\n"
     imulq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377496(%rip), %rdi
+    leaq str_8(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377497: .string "unsigned / unsigned = %u\n"
+str_9: .string "unsigned / unsigned = %u\n"
 .text
     movq -16(%rbp), %rax
     pushq %rax
@@ -134,11 +134,11 @@ str_1594377497: .string "unsigned / unsigned = %u\n"
     divq %rcx
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377497(%rip), %rdi
+    leaq str_9(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377498: .string "float + float = %f\n"
+str_10: .string "float + float = %f\n"
 .text
     movsd -24(%rbp), %xmm0
     subq $8, %rsp
@@ -150,11 +150,11 @@ str_1594377498: .string "float + float = %f\n"
     addsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377498(%rip), %rdi
+    leaq str_10(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377499: .string "float - float = %f\n"
+str_11: .string "float - float = %f\n"
 .text
     movsd -24(%rbp), %xmm0
     subq $8, %rsp
@@ -166,11 +166,11 @@ str_1594377499: .string "float - float = %f\n"
     subsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377499(%rip), %rdi
+    leaq str_11(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377500: .string "float * float = %f\n"
+str_12: .string "float * float = %f\n"
 .text
     movsd -24(%rbp), %xmm0
     subq $8, %rsp
@@ -182,11 +182,11 @@ str_1594377500: .string "float * float = %f\n"
     mulsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377500(%rip), %rdi
+    leaq str_12(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377501: .string "float / float = %f\n"
+str_13: .string "float / float = %f\n"
 .text
     movsd -24(%rbp), %xmm0
     subq $8, %rsp
@@ -198,11 +198,11 @@ str_1594377501: .string "float / float = %f\n"
     divsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377501(%rip), %rdi
+    leaq str_13(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377502: .string "int + unsigned = %u\n"
+str_14: .string "int + unsigned = %u\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -212,11 +212,11 @@ str_1594377502: .string "int + unsigned = %u\n"
     addq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377502(%rip), %rdi
+    leaq str_14(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377503: .string "int - unsigned = %u\n"
+str_15: .string "int - unsigned = %u\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -226,11 +226,11 @@ str_1594377503: .string "int - unsigned = %u\n"
     subq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377503(%rip), %rdi
+    leaq str_15(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377504: .string "int * unsigned = %u\n"
+str_16: .string "int * unsigned = %u\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -240,11 +240,11 @@ str_1594377504: .string "int * unsigned = %u\n"
     imulq %rcx, %rax
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377504(%rip), %rdi
+    leaq str_16(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377505: .string "int / unsigned = %u\n"
+str_17: .string "int / unsigned = %u\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -255,11 +255,11 @@ str_1594377505: .string "int / unsigned = %u\n"
     divq %rcx
     movq %rax, %rsi
     movl $0, %eax
-    leaq str_1594377505(%rip), %rdi
+    leaq str_17(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377506: .string "int + float = %f\n"
+str_18: .string "int + float = %f\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -270,11 +270,11 @@ str_1594377506: .string "int + float = %f\n"
     addsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377506(%rip), %rdi
+    leaq str_18(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377507: .string "int - float = %f\n"
+str_19: .string "int - float = %f\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -285,11 +285,11 @@ str_1594377507: .string "int - float = %f\n"
     subsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377507(%rip), %rdi
+    leaq str_19(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377508: .string "int * float = %f\n"
+str_20: .string "int * float = %f\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -300,11 +300,11 @@ str_1594377508: .string "int * float = %f\n"
     mulsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377508(%rip), %rdi
+    leaq str_20(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377509: .string "int / float = %f\n"
+str_21: .string "int / float = %f\n"
 .text
     movq -8(%rbp), %rax
     pushq %rax
@@ -315,11 +315,11 @@ str_1594377509: .string "int / float = %f\n"
     divsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377509(%rip), %rdi
+    leaq str_21(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377510: .string "unsigned + float = %f\n"
+str_22: .string "unsigned + float = %f\n"
 .text
     movq -16(%rbp), %rax
     pushq %rax
@@ -330,11 +330,11 @@ str_1594377510: .string "unsigned + float = %f\n"
     addsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377510(%rip), %rdi
+    leaq str_22(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377511: .string "unsigned - float = %f\n"
+str_23: .string "unsigned - float = %f\n"
 .text
     movq -16(%rbp), %rax
     pushq %rax
@@ -345,11 +345,11 @@ str_1594377511: .string "unsigned - float = %f\n"
     subsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377511(%rip), %rdi
+    leaq str_23(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377512: .string "unsigned * float = %f\n"
+str_24: .string "unsigned * float = %f\n"
 .text
     movq -16(%rbp), %rax
     pushq %rax
@@ -360,11 +360,11 @@ str_1594377512: .string "unsigned * float = %f\n"
     mulsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377512(%rip), %rdi
+    leaq str_24(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
 .data
-str_1594377513: .string "unsigned / float = %f\n"
+str_25: .string "unsigned / float = %f\n"
 .text
     movq -16(%rbp), %rax
     pushq %rax
@@ -375,7 +375,7 @@ str_1594377513: .string "unsigned / float = %f\n"
     divsd %xmm1, %xmm0
     movsd %xmm0, %xmm0
     movl $1, %eax
-    leaq str_1594377513(%rip), %rdi
+    leaq str_25(%rip), %rdi
     call printf@PLT
     # DEBUG: Body statement
     movq $0, %rax

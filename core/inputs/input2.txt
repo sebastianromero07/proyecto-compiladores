@@ -1,9 +1,10 @@
 #include <stdio.h>
-
+int x = 9.5;
+int y = 10.5;
+unsigned int z = 10;
 int main() {
-    float x = 9.5;
-    float y = 10.5;
-    unsigned int z = -10;
+
+    
 
     if (x > y) {
         printf("x es mayor\n");
