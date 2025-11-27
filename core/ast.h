@@ -218,6 +218,17 @@ public:
     ~IfStm();
 };
 
+class TernaryExp : public Exp {
+public:
+    Exp* condition;
+    Exp* thenExp;
+    Exp* elseExp;
+
+    TernaryExp(Exp* condition, Exp* thenExp, Exp* elseExp);
+    int accept(Visitor* visitor);
+    ~TernaryExp();
+};
+
 // Statement de while
 class WhileStm : public Stm {
 public:

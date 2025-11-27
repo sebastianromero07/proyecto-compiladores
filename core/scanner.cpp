@@ -137,7 +137,7 @@ Token* Scanner::nextToken() {
         }
     }
     // Otros operadores y símbolos
-    else if (strchr("+/-*(){};,", c)) {
+    else if (strchr("+/-*(){};,?:", c)) {
         switch (c) {
             case '+': token = new Token(Token::PLUS, c); break;
             case '-': token = new Token(Token::MINUS, c); break;
@@ -149,6 +149,8 @@ Token* Scanner::nextToken() {
             case '}': token = new Token(Token::RBRACE, c); break;
             case ';': token = new Token(Token::SEMICOL, c); break;
             case ',': token = new Token(Token::COMA, c); break;
+            case '?': token = new Token(Token::QUESTION, c); break;
+            case ':': token = new Token(Token::COLON, c); break;
             default: token = new Token(Token::ERR, c); break;
         }
         current++;

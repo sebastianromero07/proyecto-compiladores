@@ -105,6 +105,10 @@ int TypeCheckerVisitor::visit(ReturnStm* r) {
     return 0;
 }
 
+int TypeCheckerVisitor::visit(TernaryExp* exp) {
+    return 0;
+}
+
 int CodeGenerator::generar(Program* prog) {
     typeChecker.type(prog);
     fun_memoria = typeChecker.fun_memoria;
@@ -114,6 +118,28 @@ int CodeGenerator::generar(Program* prog) {
     return 0;
 }
 
+bool CodeGenerator::exprIsFloat(Exp* e) {
+    if (dynamic_cast<FloatExp*>(e)) return true;
+
+    if (auto id = dynamic_cast<IdExp*>(e)) {
+        auto it = varTypes.find(id->value);
+        if (it != varTypes.end()) {
+            return it->second == TypeDecl::FLOAT_TYPE;
+        }
+        return false;
+    }
+
+    if (auto bin = dynamic_cast<BinaryExp*>(e)) {
+        return exprIsFloat(bin->left) || exprIsFloat(bin->right);
+    }
+
+    if (auto tern = dynamic_cast<TernaryExp*>(e)) {
+        return exprIsFloat(tern->thenExp) || exprIsFloat(tern->elseExp);
+    }
+
+    // BoolExp, NumberExp, StringExp, FcallExp sin info → los tratamos como int
+    return false;
+}
 
 int CodeGenerator::visit(BinaryExp* exp) {
     // Evaluar izquierda
@@ -435,6 +461,70 @@ int CodeGenerator::visit(VarDec* vd) {
 }
 
 int CodeGenerator::visit(StructDec* sd) { return 0; }
+
+int CodeGenerator::visit(TernaryExp* exp) {
+    // Decidimos tipo estático del resultado: si alguna rama es float → todo float
+    bool wantFloat = exprIsFloat(exp->thenExp) || exprIsFloat(exp->elseExp);
+
+    int lbl = labelCounter++;
+
+    // 1. Condición
+    exp->condition->accept(this);  // valor en %rax (int) o %xmm0 (float)
+    if (isFloat) {
+        // Convertir a entero para usar en cmp
+        out << "    cvttsd2si %xmm0, %rax\n";
+        isFloat = false;
+    }
+
+    out << "    cmpq $0, %rax\n";
+    out << "    je tern_else_" << lbl << "\n";
+
+    // 2. Rama then
+    exp->thenExp->accept(this); // resultado en %rax o %xmm0
+
+    if (wantFloat) {
+        if (!isFloat) {
+            // convertimos int → double
+            out << "    cvtsi2sd %rax, %xmm0\n";
+            isFloat = true;
+        }
+    } else {
+        // queremos resultado entero
+        if (isFloat) {
+            out << "    cvttsd2si %xmm0, %rax\n";
+            isFloat = false;
+        }
+    }
+
+    out << "    jmp tern_end_" << lbl << "\n";
+
+    // 3. Rama else
+    out << "tern_else_" << lbl << ":\n";
+
+    exp->elseExp->accept(this);
+
+    if (wantFloat) {
+        if (!isFloat) {
+            out << "    cvtsi2sd %rax, %xmm0\n";
+            isFloat = true;
+        }
+    } else {
+        if (isFloat) {
+            out << "    cvttsd2si %xmm0, %rax\n";
+            isFloat = false;
+        }
+    }
+
+    // 4. Fin
+    out << "tern_end_" << lbl << ":\n";
+
+    // Estado final coherente: si wantFloat, resultado en %xmm0; si no, en %rax
+    if (!wantFloat) {
+        isUnsigned = false; // por simplicidad
+    }
+    return 0;
+}
+
 
 int CodeGenerator::visit(FunDec* fd) {
     inFunction      = true;

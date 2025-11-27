@@ -31,6 +31,7 @@ class ForStm;
 class ReturnStm;
 class FcallStm;
 class FunDec;
+class TernaryExp;
 
 // Clase abstracta Visitor
 class Visitor {
@@ -45,6 +46,7 @@ public:
     virtual int visit(BoolExp* exp) = 0;
     virtual int visit(StringExp* exp) = 0;
     virtual int visit(FcallExp* exp) = 0;
+    virtual int visit(TernaryExp* exp) = 0;
     
     // Métodos virtuales puros para declaraciones
     virtual int visit(VarDec* vd) = 0;
@@ -91,6 +93,7 @@ public:
     int visit(FcallStm* stm) override;
     int visit(Body* body) override;
     int visit(Program* prog) override;
+    int visit(TernaryExp* exp) override;
 };
 
 // Visitor para generar código
@@ -119,7 +122,7 @@ public:
     bool isFloat = false; // ✅ Track if last expression was float
     bool isUnsigned = false; // ✅ Track if last expression was unsigned
     string currentFunction;
-    
+    bool exprIsFloat(Exp* e);
     CodeGenerator(std::ostream& out) : out(out) {}
     
     // Implementaciones para expresiones
@@ -148,6 +151,7 @@ public:
     // Implementaciones para estructuras compuestas
     int visit(Body* body) override;
     int visit(Program* prog) override;
+    int visit(TernaryExp* exp) override;
     
     // Método para generar código
     int generar(Program* prog);

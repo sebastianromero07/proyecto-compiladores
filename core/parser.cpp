@@ -378,7 +378,12 @@ Exp* Parser::parseCE() {
         Exp* right = parseE();
         return new BinaryExp(left, right, op);
     }
-
+    if (match(Token::QUESTION)) {
+        Exp* thenExp = parseCE();
+        match(Token::COLON);
+        Exp* elseExp = parseCE();
+        return new TernaryExp(left, thenExp, elseExp);
+    }
     return left;
 }
 

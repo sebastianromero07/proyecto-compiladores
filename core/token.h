@@ -16,7 +16,7 @@ public:
         
         // Palabras clave
         IF, ELSE, WHILE, FOR, RETURN, PRINTF, TRUE, FALSE,
-        UNSIGNED, STRUCT,
+        UNSIGNED, STRUCT, QUESTION, COLON,
         
         // ✅ NUEVO: Directivas de preprocesador
         INCLUDE,     // #include

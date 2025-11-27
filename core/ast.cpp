@@ -247,6 +247,20 @@ int IfStm::accept(Visitor* visitor) {
     return visitor->visit(this);
 }
 
+// ------------------ TernaryExp ------------------
+TernaryExp::TernaryExp(Exp* condition, Exp* thenExp, Exp* elseExp)
+    : condition(condition), thenExp(thenExp), elseExp(elseExp) {}
+
+TernaryExp::~TernaryExp() {
+    delete condition;
+    delete thenExp;
+    delete elseExp;
+}
+
+int TernaryExp::accept(Visitor* visitor) {
+    return visitor->visit(this);
+}
+
 // ------------------ WhileStm ------------------
 WhileStm::WhileStm(Exp* condition, Body* body) : condition(condition), body(body) {}
 
