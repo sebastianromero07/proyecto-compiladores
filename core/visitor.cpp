@@ -112,11 +112,58 @@ int TypeCheckerVisitor::visit(TernaryExp* exp) {
 int CodeGenerator::generar(Program* prog) {
     typeChecker.type(prog);
     fun_memoria = typeChecker.fun_memoria;
-    isFloat = false; // Reset state
-    isUnsigned = false; // Reset state
+    isFloat = false; 
+    isUnsigned = false; 
     prog->accept(this);
     return 0;
 }
+
+bool CodeGenerator::evalConstExpr(Exp* e, int& value) {
+    if (auto num = dynamic_cast<NumberExp*>(e)) {
+        value = num->value;
+        return true;
+    }
+
+    if (auto b = dynamic_cast<BoolExp*>(e)) {
+        value = b->value ? 1 : 0;
+        return true;
+    }
+
+    if (auto id = dynamic_cast<IdExp*>(e)) {
+        auto it = isConst.find(id->value);
+        if (it != isConst.end() && it->second) {
+            value = constVal[id->value];
+            return true;
+        }
+        return false;
+    }
+
+    if (auto bin = dynamic_cast<BinaryExp*>(e)) {
+        int lv, rv;
+        if (!evalConstExpr(bin->left, lv))  return false;
+        if (!evalConstExpr(bin->right, rv)) return false;
+
+        switch (bin->op) {
+            case PLUS_OP:  value = lv + rv;  return true;
+            case MINUS_OP: value = lv - rv;  return true;
+            case MUL_OP:   value = lv * rv;  return true;
+            case DIV_OP:
+                if (rv == 0) return false;
+                value = lv / rv;
+                return true;
+            case LT_OP:  value = (lv <  rv) ? 1 : 0; return true;
+            case LE_OP:  value = (lv <= rv) ? 1 : 0; return true;
+            case GT_OP:  value = (lv >  rv) ? 1 : 0; return true;
+            case GE_OP:  value = (lv >= rv) ? 1 : 0; return true;
+            case EQ_OP:  value = (lv == rv) ? 1 : 0; return true;
+            case NE_OP:  value = (lv != rv) ? 1 : 0; return true;
+            default: return false;
+        }
+    }
+
+    return false;
+}
+
 
 bool CodeGenerator::exprIsFloat(Exp* e) {
     if (dynamic_cast<FloatExp*>(e)) return true;
@@ -136,57 +183,40 @@ bool CodeGenerator::exprIsFloat(Exp* e) {
     if (auto tern = dynamic_cast<TernaryExp*>(e)) {
         return exprIsFloat(tern->thenExp) || exprIsFloat(tern->elseExp);
     }
-
-    // BoolExp, NumberExp, StringExp, FcallExp sin info → los tratamos como int
     return false;
 }
 
 int CodeGenerator::visit(BinaryExp* exp) {
-    // ==============================
-    // 1) CONSTANT FOLDING
-    // ==============================
     int constVal;
     if (exp->isConstant(constVal)) {
-        // Toda la expresión es constante (solo ints/bools)
-        // Ej: 1+2+3+...+10 → 55
         out << "    movq $" << constVal << ", %rax\n";
-        isFloat = false;      // resultado es int
-        isUnsigned = false;   // por defecto signed
+        isFloat = false;      
+        isUnsigned = false;   
         return 0;
     }
 
-    // ==============================
-    // 2) CAMINO NORMAL (tu código original)
-    // ==============================
-
-    // Evaluar izquierda
     exp->left->accept(this);
     bool leftIsFloat = isFloat;
     
     if (leftIsFloat) {
         out << "    subq $8, %rsp\n";
-        out << "    movsd %xmm0, (%rsp)\n"; // Guardar float en stack
+        out << "    movsd %xmm0, (%rsp)\n"; 
     } else {
-        out << "    pushq %rax\n"; // Guardar int en stack
+        out << "    pushq %rax\n"; 
     }
     bool leftIsUnsigned = isUnsigned;
 
-    // Evaluar derecha
     exp->right->accept(this);
     bool rightIsFloat = isFloat;
     bool rightIsUnsigned = isUnsigned;
     
-    // Si alguno es float, convertir el otro a float si es necesario y operar en XMM
     if (leftIsFloat || rightIsFloat) {
         if (!rightIsFloat) {
-            // Convertir right (en %rax) a float en %xmm1
             out << "    cvtsi2sd %rax, %xmm1\n";
         } else {
-            // right ya está en %xmm0, mover a %xmm1
             out << "    movsd %xmm0, %xmm1\n";
         }
         
-        // Recuperar left
         if (leftIsFloat) {
             out << "    movsd (%rsp), %xmm0\n";
             out << "    addq $8, %rsp\n";
@@ -195,7 +225,6 @@ int CodeGenerator::visit(BinaryExp* exp) {
             out << "    cvtsi2sd %rax, %xmm0\n";
         }
         
-        // Operar %xmm0 (left) y %xmm1 (right)
         switch (exp->op) {
             case PLUS_OP: out << "    addsd %xmm1, %xmm0\n"; break;
             case MINUS_OP: out << "    subsd %xmm1, %xmm0\n"; break;
@@ -208,7 +237,7 @@ int CodeGenerator::visit(BinaryExp* exp) {
             case EQ_OP:
             case NE_OP:
                 out << "    ucomisd %xmm1, %xmm0\n";
-                out << "    movl $0, %eax\n"; // Reset eax
+                out << "    movl $0, %eax\n"; 
                 switch (exp->op) {
                     case LT_OP: out << "    setb %al\n"; break;
                     case LE_OP: out << "    setbe %al\n"; break;
@@ -219,13 +248,13 @@ int CodeGenerator::visit(BinaryExp* exp) {
                     default: break;
                 }
                 out << "    movzbq %al, %rax\n";
-                isFloat = false; // Resultado de comparación es int (bool)
+                isFloat = false; 
                 return 0;
             default: break;
         }
-        isFloat = true; // Resultado es float
+        isFloat = true;
     } else {
-        // Enteros normales (signed o unsigned)
+
         out << "    movq %rax, %rcx\n"; // right en %rcx
         out << "    popq %rax\n";       // left en %rax
         
@@ -292,16 +321,12 @@ int CodeGenerator::visit(BinaryExp* exp) {
 int CodeGenerator::visit(NumberExp* exp) {
     out << "    movq $" << exp->value << ", %rax\n";
     isFloat = false;
-    isUnsigned = false; // Literales numéricos son signed int por defecto
+    isUnsigned = false; 
     return 0;
 }
 int CodeGenerator::visit(FloatExp* exp) {
-    // Generar label para el float
     string label = ".FL" + to_string(labelCount++);
     out << ".data\n";
-    // Usar .long para float (32-bit) o .quad para double (64-bit). Usaremos double.
-    // Hack: escribir el valor double como hex o usar directiva .double si el ensamblador lo soporta
-    // GAS soporta .double
     out << label << ": .double " << exp->value << "\n";
     out << ".text\n";
     out << "    movsd " << label << "(%rip), %xmm0\n";
@@ -311,7 +336,6 @@ int CodeGenerator::visit(FloatExp* exp) {
 int CodeGenerator::visit(IdExp* exp) {
     if (localVars.check(exp->value)) {
         int offset = localVars.lookup(exp->value);
-        // Check type
         if (varTypes.count(exp->value) && varTypes[exp->value] == TypeDecl::FLOAT_TYPE) {
             out << "    movsd " << offset << "(%rbp), %xmm0\n";
             isFloat = true;
@@ -328,7 +352,6 @@ int CodeGenerator::visit(IdExp* exp) {
     } else if (globalVars.count(exp->value)) {
         out << "    movq " << exp->value << "(%rip), %rax\n";
         isFloat = false;
-        // Track unsigned type for global variables
         if (varTypes.count(exp->value) && varTypes[exp->value] == TypeDecl::UNSIGNED_TYPE) {
             isUnsigned = true;
         } else {
@@ -349,12 +372,11 @@ int CodeGenerator::visit(StringExp* exp) {
     return 0;
 }
 
-// En visitor.cpp, línea ~530, VERIFICAR que esté así:
 int CodeGenerator::visit(FcallExp* exp) {
     if (exp->fname == "printf") {
         if (exp->args.empty()) return 0;
         
-        // 1. Manejar el formato (primer argumento)
+
         auto it = exp->args.begin();
         Exp* formatExp = *it;
         StringExp* strExp = dynamic_cast<StringExp*>(formatExp);
@@ -364,49 +386,44 @@ int CodeGenerator::visit(FcallExp* exp) {
             out << ".data\n";
             out << label << ": .string " << strExp->value << "\n";
             out << ".text\n";
-            out << "    leaq " << label << "(%rip), %rdi\n"; // 1er argumento (formato) en %rdi
+            out << "    leaq " << label << "(%rip), %rdi\n"; 
             
-            // Avanzar al siguiente argumento
             it++;
         } else {
-            // Si el primer argumento no es string literal, evaluarlo y ponerlo en %rdi
             formatExp->accept(this);
             out << "    movq %rax, %rdi\n";
             it++;
         }
 
-        // 2. Manejar argumentos restantes (variadic)
-        int gp_reg_idx = 0; // Índice para registros de propósito general (rsi, rdx, rcx, r8, r9)
-        int xmm_reg_idx = 0; // Índice para registros XMM (xmm0 - xmm7)
+        int gp_reg_idx = 0; 
+        int xmm_reg_idx = 0; 
         vector<string> gp_regs = {"%rsi", "%rdx", "%rcx", "%r8", "%r9"};
         
         for (; it != exp->args.end(); ++it) {
-            (*it)->accept(this); // Evaluar argumento -> %rax (int) o %xmm0 (float)
+            (*it)->accept(this); 
             
             if (isFloat) {
                 if (xmm_reg_idx < 8) {
                     if (xmm_reg_idx > 0) {
                         out << "    movsd %xmm0, %xmm" << xmm_reg_idx << "\n";
                     }
-                    // Si xmm_reg_idx == 0, ya está en %xmm0
                     xmm_reg_idx++;
                 } else {
-                    // TODO: Manejar spill a stack si hay más de 8 floats
+             
                 }
             } else {
                 if (gp_reg_idx < 5) {
                     out << "    movq %rax, " << gp_regs[gp_reg_idx++] << "\n";
                 } else {
-                    out << "    pushq %rax\n"; // Pasar en stack (reverse order needed technically)
+                    out << "    pushq %rax\n";
                 }
             }
         }
         
-        out << "    movl $" << xmm_reg_idx << ", %eax\n"; // Número de registros vectoriales usados
+        out << "    movl $" << xmm_reg_idx << ", %eax\n"; 
         out << "    call printf@PLT\n";
         
     } else {
-        // Otras funciones (convención estándar)
         vector<string> argRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
         int xmm_idx = 0;
         
@@ -418,7 +435,7 @@ int CodeGenerator::visit(FcallExp* exp) {
                  out << "    movq %rax, " << argRegs[i] << "\n";
             }
         }
-        out << "    movl $" << xmm_idx << ", %eax\n"; // Importante para funciones variadic o sin prototipo
+        out << "    movl $" << xmm_idx << ", %eax\n";
         out << "    call " << exp->fname << "@PLT\n";
     }
     return 0;
@@ -428,7 +445,6 @@ int CodeGenerator::visit(VarDec* vd) {
     for (auto& var : vd->vars) {
         const string& name = var.name;
         
-        // Registrar tipo
         if (vd->type->kind == TypeDecl::FLOAT_TYPE) {
             varTypes[name] = TypeDecl::FLOAT_TYPE;
         } else if (vd->type->kind == TypeDecl::UNSIGNED_TYPE) {
@@ -438,10 +454,8 @@ int CodeGenerator::visit(VarDec* vd) {
         }
 
         if (!inFunction) {
-            // Variables globales
             globalVars[name] = true;
             
-            // Store initialization value if present
             if (var.init_value) {
                 int value;
                 if (var.init_value->isConstant(value)) {
@@ -449,14 +463,11 @@ int CodeGenerator::visit(VarDec* vd) {
                 }
             }
         } else {
-            // ✅ Variables locales CON inicialización
             localVars.add_var(name, offset);
             
             if (var.init_value) {
-                // Evaluar valor inicial
                 var.init_value->accept(this);
                 
-                // Conversión implícita: si la variable es float pero el valor es int
                 if (vd->type->kind == TypeDecl::FLOAT_TYPE && !isFloat) {
                     out << "    cvtsi2sd %rax, %xmm0\n";
                     isFloat = true;
@@ -468,11 +479,10 @@ int CodeGenerator::visit(VarDec* vd) {
                     out << "    movq %rax, " << offset << "(%rbp)\n";
                 }
             } else {
-                // Sin inicialización, poner 0
                 out << "    movq $0, " << offset << "(%rbp)\n";
             }
             
-            offset -= 8;  // ✅ CRÍTICO: Siguiente posición en el stack
+            offset -= 8;  
         }
     }
     return 0;
@@ -481,15 +491,12 @@ int CodeGenerator::visit(VarDec* vd) {
 int CodeGenerator::visit(StructDec* sd) { return 0; }
 
 int CodeGenerator::visit(TernaryExp* exp) {
-    // Decidimos tipo estático del resultado: si alguna rama es float → todo float
     bool wantFloat = exprIsFloat(exp->thenExp) || exprIsFloat(exp->elseExp);
 
     int lbl = labelCounter++;
 
-    // 1. Condición
-    exp->condition->accept(this);  // valor en %rax (int) o %xmm0 (float)
+    exp->condition->accept(this);  
     if (isFloat) {
-        // Convertir a entero para usar en cmp
         out << "    cvttsd2si %xmm0, %rax\n";
         isFloat = false;
     }
@@ -497,17 +504,14 @@ int CodeGenerator::visit(TernaryExp* exp) {
     out << "    cmpq $0, %rax\n";
     out << "    je tern_else_" << lbl << "\n";
 
-    // 2. Rama then
-    exp->thenExp->accept(this); // resultado en %rax o %xmm0
+    exp->thenExp->accept(this); 
 
     if (wantFloat) {
         if (!isFloat) {
-            // convertimos int → double
             out << "    cvtsi2sd %rax, %xmm0\n";
             isFloat = true;
         }
     } else {
-        // queremos resultado entero
         if (isFloat) {
             out << "    cvttsd2si %xmm0, %rax\n";
             isFloat = false;
@@ -516,7 +520,6 @@ int CodeGenerator::visit(TernaryExp* exp) {
 
     out << "    jmp tern_end_" << lbl << "\n";
 
-    // 3. Rama else
     out << "tern_else_" << lbl << ":\n";
 
     exp->elseExp->accept(this);
@@ -533,12 +536,10 @@ int CodeGenerator::visit(TernaryExp* exp) {
         }
     }
 
-    // 4. Fin
     out << "tern_end_" << lbl << ":\n";
 
-    // Estado final coherente: si wantFloat, resultado en %xmm0; si no, en %rax
     if (!wantFloat) {
-        isUnsigned = false; // por simplicidad
+        isUnsigned = false;
     }
     return 0;
 }
@@ -547,13 +548,12 @@ int CodeGenerator::visit(TernaryExp* exp) {
 int CodeGenerator::visit(FunDec* fd) {
     inFunction      = true;
     currentFunction = fd->name;
-
-    // Entorno de variables locales
+    isConst.clear();
+    constVal.clear();
     localVars.clear();
     localVars.add_level();
     offset = -8;
 
-    // Prologue
     out << ".globl " << fd->name << "\n";
     out << fd->name << ":\n";
     out << "    pushq %rbp\n";
@@ -569,17 +569,15 @@ int CodeGenerator::visit(FunDec* fd) {
         out << "    subq $" << (totalSlots * 8) << ", %rsp\n";
     }
 
-    // Pasar parámetros a la pila local
     vector<string> gpArgRegs = {"%rdi","%rsi","%rdx","%rcx","%r8","%r9"};
-    int gp_idx  = 0;   // índice registros enteros
-    int xmm_idx = 0;   // índice registros XMM para float
+    int gp_idx  = 0;  
+    int xmm_idx = 0;   
 
     int nparams = (int)fd->pnames.size();
     for (int i = 0; i < nparams; ++i) {
         const string& pname = fd->pnames[i];
         TypeDecl* ptype = (i < (int)fd->ptypes.size()) ? fd->ptypes[i] : nullptr;
 
-        // Registrar tipo del parámetro
         if (ptype) {
             if (ptype->kind == TypeDecl::FLOAT_TYPE) {
                 varTypes[pname] = TypeDecl::FLOAT_TYPE;
@@ -592,15 +590,14 @@ int CodeGenerator::visit(FunDec* fd) {
             varTypes[pname] = TypeDecl::INT_TYPE;
         }
 
-        // Crear entrada en Environment
         localVars.add_var(pname, offset);
 
         if (ptype && ptype->kind == TypeDecl::FLOAT_TYPE) {
-            // Parámetro float → viene en %xmmN
+
             out << "    movsd %xmm" << xmm_idx << ", " << offset << "(%rbp)\n";
             xmm_idx++;
         } else {
-            // Parámetro entero / unsigned → viene en %rdi, %rsi, ...
+
             out << "    movq " << gpArgRegs[gp_idx] << ", " << offset << "(%rbp)\n";
             gp_idx++;
         }
@@ -608,12 +605,10 @@ int CodeGenerator::visit(FunDec* fd) {
         offset -= 8;
     }
 
-    // Cuerpo
     if (fd->body) {
         fd->body->accept(this);
     }
 
-    // etiqueta final para los returns
     out << ".end_" << fd->name << ":\n";
     out << "    leave\n";
     out << "    ret\n";
@@ -624,12 +619,11 @@ int CodeGenerator::visit(FunDec* fd) {
     return 0;
 }
 int CodeGenerator::visit(AssignStm* stm) {
-    stm->rhs->accept(this);  // valor en %rax o %xmm0
+    stm->rhs->accept(this); 
 
     bool destIsFloat = (varTypes.count(stm->id) && varTypes[stm->id] == TypeDecl::FLOAT_TYPE);
 
     if (globalVars.count(stm->id)) {
-        // Variables globales
         if (destIsFloat) {
             if (!isFloat) {
                 out << "    cvtsi2sd %rax, %xmm0\n";
@@ -655,12 +649,20 @@ int CodeGenerator::visit(AssignStm* stm) {
             out << "    movq %rax, " << off << "(%rbp)\n";
         }
     }
+
+    int v;
+    if (evalConstExpr(stm->rhs, v)) {
+        isConst[stm->id]  = true;
+        constVal[stm->id] = v;
+    } else {
+        isConst[stm->id] = false;
+    }
+
     return 0;
 }
 int CodeGenerator::visit(PrintStm* stm) {
     if (stm->args.empty()) return 0;
     
-    // ✅ Usar iteradores para list
     auto it = stm->args.begin();
     Exp* formatExp = *it;
     
@@ -668,27 +670,23 @@ int CodeGenerator::visit(PrintStm* stm) {
     
     if (strExp) {
         string label = "str_" + to_string(labelCount++);
-        
-        // ✅ Generar string literal
         out << ".data\n";
         out << label << ": .string " << strExp->value << "\n";
         out << ".text\n";
         
         if (stm->args.size() == 1) {
-            // printf("string literal")
             out << "    leaq " << label << "(%rip), %rdi\n";
             out << "    movl $0, %eax\n";
             out << "    call printf@PLT\n";
         } else {
-            // printf("format %d", variable)
-            ++it;  // Saltar formato, ir al argumento
-            (*it)->accept(this);  // Evaluar variable -> %rax o %xmm0
+            ++it;  
+            (*it)->accept(this);  
             
             if (isFloat) {
-                out << "    movsd %xmm0, %xmm0\n"; // Redundante pero claro
-                out << "    movl $1, %eax\n"; // 1 vector register used
+                out << "    movsd %xmm0, %xmm0\n"; 
+                out << "    movl $1, %eax\n"; 
             } else {
-                out << "    movq %rax, %rsi\n";  // Segundo parámetro
+                out << "    movq %rax, %rsi\n";  
                 out << "    movl $0, %eax\n";
             }
             
@@ -716,11 +714,11 @@ int CodeGenerator::visit(PrintStm* stm) {
 
 int CodeGenerator::visit(IfStm* stm) {
     int constVal;
-    if (stm->condition->isConstant(constVal)) {
+    if (evalConstExpr(stm->condition, constVal)) {
         if (constVal != 0) {
             if (stm->thenbody) stm->thenbody->accept(this);
-        } else if (stm->elsebody) {
-            stm->elsebody->accept(this);
+        } else {
+            if (stm->elsebody) stm->elsebody->accept(this);
         }
         return 0;
     }

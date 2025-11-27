@@ -19,6 +19,6 @@ int main() {
     y = 9;
     m = max2(x, y);
 
-    printf("max = %d\n", m);   // esperado: 9
+    printf("max = %d\n", m);  
     return 0;
 }

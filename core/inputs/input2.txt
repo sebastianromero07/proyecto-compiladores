@@ -15,6 +15,6 @@ int main() {
     y = 6.0;
     p = promedio(x, y);
 
-    printf("promedio = %f\n", p);   // esperado: 5.000000
+    printf("promedio = %f\n", p);
     return 0;
 }

@@ -112,6 +112,10 @@ public:
     bool isFloat = false; 
     bool isUnsigned = false; 
     string currentFunction;
+
+    unordered_map<string, bool> isConst;
+    unordered_map<string, int>  constVal;
+    bool evalConstExpr(Exp* e, int& value);
     bool exprIsFloat(Exp* e);
     CodeGenerator(std::ostream& out) : out(out) {}
     

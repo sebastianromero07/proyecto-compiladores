@@ -1,0 +1,9 @@
+#include <stdio.h>
+
+int main() {
+    int z;
+
+    z = (1 + 2) * (3 + 4) - (10 / 2) + (5 > 3) * 100;
+    printf("%d\n", z);
+    return 0;
+}
