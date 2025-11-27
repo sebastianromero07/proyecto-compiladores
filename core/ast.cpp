@@ -168,7 +168,6 @@ VarDec::VarDec(TypeDecl* t) : type(t) {}
 
 VarDec::~VarDec() {
     delete type;
-    // ✅ NUEVO: Limpiar expresiones de inicialización
     for (auto& var : vars) {
         if (var.init_value) {
             delete var.init_value;

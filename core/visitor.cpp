@@ -142,6 +142,23 @@ bool CodeGenerator::exprIsFloat(Exp* e) {
 }
 
 int CodeGenerator::visit(BinaryExp* exp) {
+    // ==============================
+    // 1) CONSTANT FOLDING
+    // ==============================
+    int constVal;
+    if (exp->isConstant(constVal)) {
+        // Toda la expresión es constante (solo ints/bools)
+        // Ej: 1+2+3+...+10 → 55
+        out << "    movq $" << constVal << ", %rax\n";
+        isFloat = false;      // resultado es int
+        isUnsigned = false;   // por defecto signed
+        return 0;
+    }
+
+    // ==============================
+    // 2) CAMINO NORMAL (tu código original)
+    // ==============================
+
     // Evaluar izquierda
     exp->left->accept(this);
     bool leftIsFloat = isFloat;
@@ -193,11 +210,11 @@ int CodeGenerator::visit(BinaryExp* exp) {
                 out << "    ucomisd %xmm1, %xmm0\n";
                 out << "    movl $0, %eax\n"; // Reset eax
                 switch (exp->op) {
-                    case LT_OP: out << "    setb %al\n"; break; // setb para unsigned/float <
+                    case LT_OP: out << "    setb %al\n"; break;
                     case LE_OP: out << "    setbe %al\n"; break;
                     case GT_OP: out << "    seta %al\n"; break;
                     case GE_OP: out << "    setae %al\n"; break;
-                    case EQ_OP: out << "    sete %al\n"; break; // sete funciona igual
+                    case EQ_OP: out << "    sete %al\n"; break;
                     case NE_OP: out << "    setne %al\n"; break;
                     default: break;
                 }
@@ -217,14 +234,14 @@ int CodeGenerator::visit(BinaryExp* exp) {
         switch (exp->op) {
             case PLUS_OP: out << "    addq %rcx, %rax\n"; break;
             case MINUS_OP: out << "    subq %rcx, %rax\n"; break;
-            case MUL_OP: out << "    imulq %rcx, %rax\n"; break; // imulq funciona para ambos (truncamiento igual)
+            case MUL_OP: out << "    imulq %rcx, %rax\n"; break;
             case DIV_OP:
-                out << "    movq $0, %rdx\n"; // Limpiar rdx para div
+                out << "    movq $0, %rdx\n";
                 if (useUnsigned) {
-                    out << "    divq %rcx\n"; // Unsigned div
+                    out << "    divq %rcx\n";
                 } else {
-                    out << "    cqto\n";      // Sign extension rax->rdx:rax
-                    out << "    idivq %rcx\n"; // Signed div
+                    out << "    cqto\n";
+                    out << "    idivq %rcx\n";
                 }
                 break;
             case LT_OP:
@@ -266,10 +283,11 @@ int CodeGenerator::visit(BinaryExp* exp) {
             default: break;
         }
         isFloat = false;
-        isUnsigned = useUnsigned; // Propagar unsignedness
+        isUnsigned = useUnsigned;
     }
     return 0;
 }
+
 
 int CodeGenerator::visit(NumberExp* exp) {
     out << "    movq $" << exp->value << ", %rax\n";
@@ -609,8 +627,6 @@ int CodeGenerator::visit(AssignStm* stm) {
     stm->rhs->accept(this);  // valor en %rax o %xmm0
 
     bool destIsFloat = (varTypes.count(stm->id) && varTypes[stm->id] == TypeDecl::FLOAT_TYPE);
-    bool destIsDouble = false; // Si soportas double, agrega lógica aquí
-    bool destIsInt = (varTypes.count(stm->id) && varTypes[stm->id] == TypeDecl::INT_TYPE);
 
     if (globalVars.count(stm->id)) {
         // Variables globales
@@ -680,14 +696,12 @@ int CodeGenerator::visit(PrintStm* stm) {
             out << "    call printf@PLT\n";
         }
     } else {
-        // ✅ NUEVO: printf(variable) sin formato explícito
-        // Imprimir cada argumento como entero o float
         for (auto arg : stm->args) {
-            arg->accept(this); // Evaluar -> %rax o %xmm0
+            arg->accept(this); 
             
             if (isFloat) {
                 out << "    leaq print_float_fmt(%rip), %rdi\n";
-                out << "    movl $1, %eax\n"; // 1 float arg
+                out << "    movl $1, %eax\n"; 
             } else {
                 out << "    movq %rax, %rsi\n";
                 out << "    leaq print_fmt(%rip), %rdi\n";
@@ -764,7 +778,7 @@ int CodeGenerator::visit(ForStm* stm) {
 
 int CodeGenerator::visit(ReturnStm* stm) {
     if (stm->expr) {
-        stm->expr->accept(this);   // valor en %rax
+        stm->expr->accept(this); 
     }
     out << "    jmp .end_" << currentFunction << "\n";
     return 0;
@@ -787,8 +801,6 @@ int CodeGenerator::visit(FcallStm* stm) {
 
             // Detectar formato
             bool expectFloat = formatExp->value.find("%f") != string::npos;
-            bool expectInt   = formatExp->value.find("%d") != string::npos;
-            bool expectUnsigned = formatExp->value.find("%u") != string::npos;
 
             if (stm->fcall->args.size() == 1) {
                 out << "    leaq " << label << "(%rip), %rdi\n";
@@ -827,8 +839,7 @@ int CodeGenerator::visit(Body* body) {
         vd->accept(this);
     }
     for (auto stm : body->stmts) {
-        out << "    # DEBUG: Body statement\n";
-        stm->accept(this); // SIEMPRE recorre todos los statements
+        stm->accept(this); 
     }
     localVars.remove_level();
     return 0;
@@ -857,8 +868,6 @@ int CodeGenerator::visit(Program* prog) {
             out << it->first << ": .quad " << initValue << "\n";
         }
     }
-
-    // (structs no generan nada por ahora)
     // Sección de código
     out << ".text\n";
     for (auto fd : prog->fundecs) {

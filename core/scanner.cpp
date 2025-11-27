@@ -74,14 +74,14 @@ Token* Scanner::nextToken() {
         current++;
         token = new Token(Token::STRING, input, first, current - first);
     }
-    // Identificadores y palabras clave
+
     else if (isalpha(c) || c == '_') {
         while (current < input.length() && (isalnum(input[current]) || input[current] == '_' || input[current] == '.')) {
             current++;
         }
         string lexema = input.substr(first, current - first);
         
-        // Palabras clave de control
+
         if (lexema == "if") return new Token(Token::IF, input, first, current - first);
         else if (lexema == "else") return new Token(Token::ELSE, input, first, current - first);
         else if (lexema == "while") return new Token(Token::WHILE, input, first, current - first);
@@ -150,10 +150,6 @@ Token* Scanner::nextToken() {
 
 Scanner::~Scanner() { }
 
-
-// -----------------------------
-// Función de prueba
-// -----------------------------
 
 int ejecutar_scanner(Scanner* scanner, const string& InputFile) {
     Token* tok;

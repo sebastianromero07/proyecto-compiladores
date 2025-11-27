@@ -10,7 +10,6 @@ suma:
     movq %rdi, -8(%rbp)
     movq %rsi, -16(%rbp)
     movq $0, -24(%rbp)
-    # DEBUG: Body statement
     movq -8(%rbp), %rax
     pushq %rax
     movq -16(%rbp), %rax
@@ -18,7 +17,6 @@ suma:
     popq %rax
     addq %rcx, %rax
     movq %rax, -24(%rbp)
-    # DEBUG: Body statement
     movq -24(%rbp), %rax
     jmp .end_suma
 .end_suma:
@@ -32,13 +30,10 @@ main:
     movq $0, -8(%rbp)
     movq $0, -16(%rbp)
     movq $0, -24(%rbp)
-    # DEBUG: Body statement
     movq $2, %rax
     movq %rax, -8(%rbp)
-    # DEBUG: Body statement
     movq $3, %rax
     movq %rax, -16(%rbp)
-    # DEBUG: Body statement
     movq -8(%rbp), %rax
     movq %rax, %rdi
     movq -16(%rbp), %rax
@@ -46,7 +41,6 @@ main:
     movl $0, %eax
     call suma@PLT
     movq %rax, -24(%rbp)
-    # DEBUG: Body statement
 .data
 str_0: .string "suma = %d\n"
 .text
@@ -55,7 +49,6 @@ str_0: .string "suma = %d\n"
     movl $0, %eax
     leaq str_0(%rip), %rdi
     call printf@PLT
-    # DEBUG: Body statement
     movq $0, %rax
     jmp .end_main
 .end_main:

@@ -9,20 +9,11 @@ using namespace std;
 class Token {
 public:
     enum Type {
-        // Tokens existentes
         LPAREN, RPAREN, LBRACE, RBRACE, SEMICOL, COMA,
         PLUS, MINUS, MUL, DIV, ASSIGN, LT, LE, GT, GE, EQ, NE,
         NUM, FLOAT_NUM, ID, STRING,
-        
-        // Palabras clave
         IF, ELSE, WHILE, FOR, RETURN, PRINTF, TRUE, FALSE,
-        UNSIGNED, STRUCT, QUESTION, COLON,
-        
-        // ✅ NUEVO: Directivas de preprocesador
-        INCLUDE,     // #include
-        PREPROCESSOR, // Cualquier directiva que empiece con #
-        
-        // Tokens especiales
+        UNSIGNED, STRUCT, QUESTION, COLON, INCLUDE, PREPROCESSOR,
         ERR, END
     };
 
