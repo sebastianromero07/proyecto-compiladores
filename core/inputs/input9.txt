@@ -1,0 +1,14 @@
+#include <stdio.h>
+
+int main() {
+    int a;
+    float b;
+    float r;
+
+    a = 3;
+    b = 2.5;
+    r = a + b;        
+
+    printf("r (3 + 2.5) = %f\n", r);  
+    return 0;
+}

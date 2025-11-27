@@ -1,0 +1,18 @@
+#include <stdio.h>
+
+int main() {
+    int   n;
+    float f;
+    float r1;
+    float r2;
+
+    n = -3;
+    f = 4.5;
+
+    r1 = (n < 0) ? n : f;  
+    r2 = (n > 0) ? n : f;   
+
+    printf("r1 = %f\n", r1); 
+    printf("r2 = %f\n", r2); 
+    return 0;
+}

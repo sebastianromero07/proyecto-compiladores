@@ -1,0 +1,21 @@
+#include <stdio.h>
+
+int main() {
+    int           s;
+    unsigned int  u;
+    int           r_signed;
+    int           r_mixed;
+
+    s = -1;
+    u = 1;
+
+    r_signed = (s < 1) ? 1 : 0;
+
+    r_mixed  = (s < u) ? 1 : 0;
+
+    printf("s = %d\n", s);
+    printf("u = %d\n", u);               
+    printf("s < 1  (signed) = %d\n", r_signed);
+    printf("s < u  (mixed)  = %d\n", r_mixed);
+    return 0;
+}

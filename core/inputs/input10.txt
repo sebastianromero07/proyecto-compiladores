@@ -1,0 +1,13 @@
+#include <stdio.h>
+
+int main() {
+    float f;
+    int   n;
+
+    f = 7.9;
+    n = f;         
+
+    printf("f = %f\n", f); 
+    printf("n = %d\n", n); 
+    return 0;
+}

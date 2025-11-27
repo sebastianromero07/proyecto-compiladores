@@ -1,18 +1,25 @@
 #include <stdio.h>
 
-int cuadrado(int x) {
+struct Contenedor {
+    int valor;  
+};
+
+int sumar_contenedor(struct Contenedor c, int delta) {
     int r;
-    r = x * x;
+    r = c + delta;
     return r;
 }
 
 int main() {
-    int a;
-    int q;
+    struct Contenedor c1;  
+    int d;
+    int resultado;
+    c1 = 10;           
+    d  = 5;
+    resultado = sumar_contenedor(c1, d);
+    printf("c1 = %d\n", c1);
+    printf("d  = %d\n", d);
+    printf("resultado = %d\n", resultado);
 
-    a = 3;
-    q = cuadrado(a);
-
-    printf("cuadrado = %d\n", q);  
     return 0;
 }
