@@ -1,23 +1,24 @@
 #include <stdio.h>
 
+int max2(int a, int b) {
+    int r;
+    if (a >= b) {
+        r = a;
+    } else {
+        r = b;
+    }
+    return r;
+}
+
 int main() {
-    int i = 5;
-    float f = 2.5;
-    float r1 = i + f;  
-    float r2 = i + 1.2
-    float t = (i > 3) ? i : f;
+    int x;
+    int y;
+    int m;
 
-    printf("=== Promociones en printf ===\n");
-    printf("float %f\n", f);        
-    
-    printf("\n=== Usual arithmetic conversions ===\n");
-    printf("int + float = %f\n", r1);          
-    printf("int + float = %f\n", r2);  
+    x = 5;
+    y = 9;
+    m = max2(x, y);
 
-
-    printf("t = %f\n", t);      
-
-    printf("%f\n", (i > 3) ? i : f);
-    printf("%f\n", (i > 3) ? f : i);
+    printf("max = %d\n", m);   // esperado: 9
     return 0;
 }

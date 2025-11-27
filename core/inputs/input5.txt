@@ -1,0 +1,25 @@
+#include <stdio.h>
+
+int main() {
+    int x;
+    int y;
+    int suma;
+    int prod;
+    int rel1;
+    int rel2;
+
+    x = 3;
+    y = 5;
+
+    suma = x + y;     
+    prod = x * y;      
+
+    rel1 = suma > prod;   
+    rel2 = suma <= prod;  
+
+    printf("suma = %d\n", suma);
+    printf("prod = %d\n", prod);
+    printf("suma > prod = %d\n", rel1);
+    printf("suma <= prod = %d\n", rel2);
+    return 0;
+}

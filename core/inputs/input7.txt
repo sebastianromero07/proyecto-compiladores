@@ -1,0 +1,17 @@
+#include <stdio.h>
+
+int main() {
+    int i;
+    int acc;
+
+    i = 0;
+    acc = 0;
+
+    while (i < 5) {
+        acc = acc + i;  
+        i = i + 1;
+    }
+
+    printf("suma = %d\n", acc); 
+    return 0;
+}

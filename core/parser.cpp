@@ -364,29 +364,37 @@ Stm* Parser::parsePrintStm() {
 }
 
 Exp* Parser::parseCE() {
-    Exp* left = parseE();
+    Exp* cond = parseRelExp();
 
-    if (match(Token::LT) || match(Token::LE) || match(Token::EQ) ||
-        match(Token::GT) || match(Token::GE)) {
-        BinaryOp op;
-        if (previous->type == Token::LT) op = LT_OP;
-        else if (previous->type == Token::LE) op = LE_OP;
-        else if (previous->type == Token::EQ) op = EQ_OP;
-        else if (previous->type == Token::GT) op = GT_OP;
-        else if (previous->type == Token::GE) op = GE_OP;
-
-        Exp* right = parseE();
-        return new BinaryExp(left, right, op);
-    }
     if (match(Token::QUESTION)) {
         Exp* thenExp = parseCE();
         match(Token::COLON);
         Exp* elseExp = parseCE();
-        return new TernaryExp(left, thenExp, elseExp);
+        return new TernaryExp(cond, thenExp, elseExp);
     }
-    return left;
+
+    return cond;
 }
 
+Exp* Parser::parseRelExp() {
+    Exp* left = parseE();
+
+    if (match(Token::LT) || match(Token::LE) || match(Token::EQ) ||
+        match(Token::GT) || match(Token::GE)) {
+
+        BinaryOp op;
+        if (previous->type == Token::LT)      op = LT_OP;
+        else if (previous->type == Token::LE) op = LE_OP;
+        else if (previous->type == Token::EQ) op = EQ_OP;
+        else if (previous->type == Token::GT) op = GT_OP;
+        else                                  op = GE_OP;
+
+        Exp* right = parseE();
+        left = new BinaryExp(left, right, op);
+    }
+
+    return left; 
+}
 Exp* Parser::parseBE() {
     return parseE();
 }

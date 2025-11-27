@@ -14,11 +14,10 @@ private:
     bool advance();
     bool isAtEnd();
     
-    // Métodos auxiliares para gramática
     bool isTypeStart();
     bool isLocalDecl();
     bool isStatement();
-    void parseGlobalDecl(Program* prog); // ✅ NUEVO: simplifica parsing
+    void parseGlobalDecl(Program* prog); 
 
 public:
     Parser(Scanner* sc);
@@ -41,6 +40,7 @@ public:
     Stm* parsePrintStm();
     
     // Métodos para expresiones
+    Exp* parseRelExp();
     Exp* parseCE();
     Exp* parseBE();
     Exp* parseE();

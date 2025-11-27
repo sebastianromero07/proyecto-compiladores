@@ -33,12 +33,9 @@ class FcallStm;
 class FunDec;
 class TernaryExp;
 
-// Clase abstracta Visitor
 class Visitor {
 public:
     virtual ~Visitor() {}
-    
-    // Métodos virtuales puros para expresiones
     virtual int visit(BinaryExp* exp) = 0;
     virtual int visit(NumberExp* exp) = 0;
     virtual int visit(FloatExp* exp) = 0;
@@ -47,13 +44,9 @@ public:
     virtual int visit(StringExp* exp) = 0;
     virtual int visit(FcallExp* exp) = 0;
     virtual int visit(TernaryExp* exp) = 0;
-    
-    // Métodos virtuales puros para declaraciones
     virtual int visit(VarDec* vd) = 0;
     virtual int visit(StructDec* sd) = 0;
     virtual int visit(FunDec* fd) = 0;
-    
-    // Métodos virtuales puros para statements
     virtual int visit(AssignStm* stm) = 0;
     virtual int visit(PrintStm* stm) = 0;
     virtual int visit(IfStm* stm) = 0;
@@ -61,8 +54,6 @@ public:
     virtual int visit(ForStm* stm) = 0;
     virtual int visit(ReturnStm* stm) = 0;
     virtual int visit(FcallStm* stm) = 0;
-    
-    // Métodos virtuales puros para estructuras compuestas
     virtual int visit(Body* body) = 0;
     virtual int visit(Program* prog) = 0;
 };
@@ -96,7 +87,6 @@ public:
     int visit(TernaryExp* exp) override;
 };
 
-// Visitor para generar código
 class CodeGenerator : public Visitor {
 private:
     std::ostream& out;
@@ -115,17 +105,16 @@ public:
     unordered_map<string,int> fun_memoria;
     Environment<int> localVars;
     unordered_map<string, bool> globalVars;
-    unordered_map<string, TypeDecl::TypeKind> varTypes; // ✅ Track variable types
+    unordered_map<string, TypeDecl::TypeKind> varTypes;
     int offset = -8;
     int labelCounter = 0;
     bool inFunction = false;
-    bool isFloat = false; // ✅ Track if last expression was float
-    bool isUnsigned = false; // ✅ Track if last expression was unsigned
+    bool isFloat = false; 
+    bool isUnsigned = false; 
     string currentFunction;
     bool exprIsFloat(Exp* e);
     CodeGenerator(std::ostream& out) : out(out) {}
     
-    // Implementaciones para expresiones
     int visit(BinaryExp* exp) override;
     int visit(NumberExp* exp) override;
     int visit(FloatExp* exp) override;
@@ -134,12 +123,10 @@ public:
     int visit(StringExp* exp) override;
     int visit(FcallExp* exp) override;
     
-    // Implementaciones para declaraciones
     int visit(VarDec* vd) override;
     int visit(StructDec* sd) override;
     int visit(FunDec* fd) override;
     
-    // Implementaciones para statements
     int visit(AssignStm* stm) override;
     int visit(PrintStm* stm) override;
     int visit(IfStm* stm) override;
@@ -148,12 +135,10 @@ public:
     int visit(ReturnStm* stm) override;
     int visit(FcallStm* stm) override;
     
-    // Implementaciones para estructuras compuestas
     int visit(Body* body) override;
     int visit(Program* prog) override;
     int visit(TernaryExp* exp) override;
     
-    // Método para generar código
     int generar(Program* prog);
 };
 

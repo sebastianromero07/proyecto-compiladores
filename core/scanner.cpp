@@ -15,8 +15,6 @@ bool is_white_space(char c) {
 Token* Scanner::nextToken() {
     Token* token;
     char c;
-
-    // Saltar espacios en blanco
     while (current < input.length() && is_white_space(input[current])) {
         current++;
     }
@@ -28,11 +26,9 @@ Token* Scanner::nextToken() {
     first = current;
     c = input[current];
 
-    // ✅ NUEVO: Manejar directivas de preprocesador (#include, #define, etc.)
+    // Manejar directivas de preprocesador (#include, #define, etc.)
     if (c == '#') {
-        current++; // Saltar el #
-        
-        // Leer hasta el final de la línea o hasta encontrar un delimitador
+        current++;
         while (current < input.length() && 
                input[current] != '\n' && input[current] != '\r') {
             current++;
@@ -40,14 +36,12 @@ Token* Scanner::nextToken() {
         
         string directive = input.substr(first, current - first);
         
-        // Verificar si es #include específicamente
         if (directive.find("#include") == 0) {
             return new Token(Token::INCLUDE, input, first, current - first);
         } else {
             return new Token(Token::PREPROCESSOR, input, first, current - first);
         }
     }
-    // Números (incluyendo flotantes)
     else if (isdigit(c)) {
         while (current < input.length() && isdigit(input[current])) {
             current++;
@@ -55,7 +49,7 @@ Token* Scanner::nextToken() {
         
         // Verificar si es un número flotante
         if (current < input.length() && input[current] == '.') {
-            current++; // saltar el punto
+            current++; 
             if (current < input.length() && isdigit(input[current])) {
                 while (current < input.length() && isdigit(input[current])) {
                     current++;
@@ -69,38 +63,16 @@ Token* Scanner::nextToken() {
             token = new Token(Token::NUM, input, first, current - first);
         }
     }
-    // Strings
     else if (c == '"') {
-        current++; // saltar la comilla inicial
+        current++;
         while (current < input.length() && input[current] != '"') {
             current++;
         }
         if (current >= input.length()) {
             return new Token(Token::ERR, input, first, current - first);
         }
-        current++; // incluir la comilla final
+        current++;
         token = new Token(Token::STRING, input, first, current - first);
-    }
-    // ✅ NUEVO: Manejar < y > para #include<stdio.h>
-    else if (c == '<') {
-        current++;
-        if (current < input.length() && input[current] == '=') {
-            current++;
-            token = new Token(Token::LE, input, first, 2);
-        } else {
-            // Verificar si estamos dentro de un #include
-            // Para simplicidad, tratar < como un token individual
-            token = new Token(Token::LT, input, first, 1);
-        }
-    }
-    else if (c == '>') {
-        current++;
-        if (current < input.length() && input[current] == '=') {
-            current++;
-            token = new Token(Token::GE, input, first, 2);
-        } else {
-            token = new Token(Token::GT, input, first, 1);
-        }
     }
     // Identificadores y palabras clave
     else if (isalpha(c) || c == '_') {
@@ -118,30 +90,43 @@ Token* Scanner::nextToken() {
         else if (lexema == "printf") return new Token(Token::PRINTF, input, first, current - first);
         else if (lexema == "true") return new Token(Token::TRUE, input, first, current - first);
         else if (lexema == "false") return new Token(Token::FALSE, input, first, current - first);
-        
-        // Palabras clave estructurales
         else if (lexema == "unsigned") return new Token(Token::UNSIGNED, input, first, current - first);
         else if (lexema == "struct") return new Token(Token::STRUCT, input, first, current - first);
-        
-        // Identificador normal (incluyendo "int", "float", "stdio.h", etc.)
         else return new Token(Token::ID, input, first, current - first);
     }
-    // Operadores de comparación y asignación
-    else if (c == '=') {
-        if (current + 1 < input.length() && input[current + 1] == '=') {
-            current += 2;
-            token = new Token(Token::EQ, input, first, 2);
-        } else {
-            current++;
-            token = new Token(Token::ASSIGN, input, first, 1);
-        }
-    }
     // Otros operadores y símbolos
-    else if (strchr("+/-*(){};,?:", c)) {
+    else if (strchr("+/-*(){};,?:=<>", c)) {
         switch (c) {
             case '+': token = new Token(Token::PLUS, c); break;
             case '-': token = new Token(Token::MINUS, c); break;
+            case '=': 
+            if (current + 1 < input.length() && input[current+1]=='=')
+            {
+                current++;
+                token = new Token(Token::EQ, input, first, current + 1 - first);
+            }
+            else{
+                token = new Token(Token::ASSIGN,   c);
+            }
+            break;
             case '*': token = new Token(Token::MUL, c); break;
+            case '<':
+            if (current + 1 < input.length() && input[current + 1] == '=') {
+                current++;
+                token = new Token(Token::LE, input, first, current + 1 - first);
+            } else {
+                token = new Token(Token::LT, input, first, 1);
+            }
+            break;
+
+        case '>':
+            if (current + 1 < input.length() && input[current + 1] == '=') {
+                current++;
+                token = new Token(Token::GE, input, first, current + 1 - first); 
+            } else {
+                token = new Token(Token::GT, input, first, 1);
+            }
+            break;
             case '/': token = new Token(Token::DIV, c); break;
             case '(': token = new Token(Token::LPAREN, c); break;
             case ')': token = new Token(Token::RPAREN, c); break;

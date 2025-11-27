@@ -1,18 +1,20 @@
 #include <stdio.h>
-int x = 9;
-int y = 10;
-unsigned int z = 10;
+
+float promedio(int a, float b) {
+    float r;
+    r = (a + b) / 2.0;
+    return r;
+}
+
 int main() {
+    int x;
+    float y;
+    float p;
 
-    
+    x = 4;
+    y = 6.0;
+    p = promedio(x, y);
 
-    if (x > y) {
-        printf("x es mayor\n");
-    } else {
-        printf("y es mayor: %d\n", y);
-    }
-
-    printf("El valor de z (unsigned): %u\n", z);
-
+    printf("promedio = %f\n", p);   // esperado: 5.000000
     return 0;
 }
