@@ -545,7 +545,6 @@ int CodeGenerator::visit(FunDec* fd) {
     if (fun_memoria.count(fd->name)) {
         totalSlots = fun_memoria[fd->name];
     }
-    // ✅ Alineación de stack a 16 bytes
     if (totalSlots % 2 != 0) totalSlots++; 
 
     if (totalSlots > 0) {
@@ -553,12 +552,41 @@ int CodeGenerator::visit(FunDec* fd) {
     }
 
     // Pasar parámetros a la pila local
-    static const char* argRegs[] = {"%rdi","%rsi","%rdx","%rcx","%r8","%r9"};
-    int size = (int)fd->pnames.size();
-    for (int i = 0; i < size && i < 6; ++i) {
+    vector<string> gpArgRegs = {"%rdi","%rsi","%rdx","%rcx","%r8","%r9"};
+    int gp_idx  = 0;   // índice registros enteros
+    int xmm_idx = 0;   // índice registros XMM para float
+
+    int nparams = (int)fd->pnames.size();
+    for (int i = 0; i < nparams; ++i) {
         const string& pname = fd->pnames[i];
+        TypeDecl* ptype = (i < (int)fd->ptypes.size()) ? fd->ptypes[i] : nullptr;
+
+        // Registrar tipo del parámetro
+        if (ptype) {
+            if (ptype->kind == TypeDecl::FLOAT_TYPE) {
+                varTypes[pname] = TypeDecl::FLOAT_TYPE;
+            } else if (ptype->kind == TypeDecl::UNSIGNED_TYPE) {
+                varTypes[pname] = TypeDecl::UNSIGNED_TYPE;
+            } else {
+                varTypes[pname] = TypeDecl::INT_TYPE;
+            }
+        } else {
+            varTypes[pname] = TypeDecl::INT_TYPE;
+        }
+
+        // Crear entrada en Environment
         localVars.add_var(pname, offset);
-        out << "    movq " << argRegs[i] << ", " << offset << "(%rbp)\n";
+
+        if (ptype && ptype->kind == TypeDecl::FLOAT_TYPE) {
+            // Parámetro float → viene en %xmmN
+            out << "    movsd %xmm" << xmm_idx << ", " << offset << "(%rbp)\n";
+            xmm_idx++;
+        } else {
+            // Parámetro entero / unsigned → viene en %rdi, %rsi, ...
+            out << "    movq " << gpArgRegs[gp_idx] << ", " << offset << "(%rbp)\n";
+            gp_idx++;
+        }
+
         offset -= 8;
     }
 
