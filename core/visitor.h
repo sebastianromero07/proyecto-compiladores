@@ -19,6 +19,7 @@ class IdExp;
 class BoolExp;
 class StringExp;
 class FcallExp;
+class StructAccessExp;
 class Program;
 class VarDec;
 class StructDec;
@@ -43,6 +44,7 @@ public:
     virtual int visit(BoolExp* exp) = 0;
     virtual int visit(StringExp* exp) = 0;
     virtual int visit(FcallExp* exp) = 0;
+    virtual int visit(StructAccessExp* exp) = 0;
     virtual int visit(TernaryExp* exp) = 0;
     virtual int visit(VarDec* vd) = 0;
     virtual int visit(StructDec* sd) = 0;
@@ -63,6 +65,7 @@ public:
 class TypeCheckerVisitor : public Visitor {
 public:
     unordered_map<string,int> fun_memoria;
+    unordered_map<string,int> structSizes;
     int locales;
     int type(Program* program);
     int visit(BinaryExp* exp) override;
@@ -72,6 +75,7 @@ public:
     int visit(BoolExp* exp) override;
     int visit(StringExp* exp) override;
     int visit(FcallExp* exp) override;
+    int visit(StructAccessExp* exp) override;
     int visit(VarDec* vd) override;
     int visit(StructDec* sd) override;
     int visit(FunDec* fd) override;
@@ -106,11 +110,22 @@ public:
     Environment<int> localVars;
     unordered_map<string, bool> globalVars;
     unordered_map<string, TypeDecl::TypeKind> varTypes;
+    
+    // Struct support
+    struct StructInfo {
+        int size;
+        unordered_map<string, int> offsets;
+        unordered_map<string, TypeDecl::TypeKind> memberTypes;
+    };
+    unordered_map<string, StructInfo> structDefs;
+    unordered_map<string, string> varStructTypes; // varName -> structName
+
     int offset = -8;
     int labelCounter = 0;
     bool inFunction = false;
     bool isFloat = false; 
     bool isUnsigned = false; 
+    bool wantAddress = false; // Flag for l-value access
     string currentFunction;
 
     unordered_map<string, bool> isConst;
@@ -126,6 +141,7 @@ public:
     int visit(BoolExp* exp) override;
     int visit(StringExp* exp) override;
     int visit(FcallExp* exp) override;
+    int visit(StructAccessExp* exp) override;
     
     int visit(VarDec* vd) override;
     int visit(StructDec* sd) override;

@@ -76,7 +76,7 @@ Token* Scanner::nextToken() {
     }
 
     else if (isalpha(c) || c == '_') {
-        while (current < input.length() && (isalnum(input[current]) || input[current] == '_' || input[current] == '.')) {
+        while (current < input.length() && (isalnum(input[current]) || input[current] == '_')) {
             current++;
         }
         string lexema = input.substr(first, current - first);
@@ -95,7 +95,7 @@ Token* Scanner::nextToken() {
         else return new Token(Token::ID, input, first, current - first);
     }
     // Otros operadores y símbolos
-    else if (strchr("+/-*(){};,?:=<>", c)) {
+    else if (strchr("+/-*(){};,?:=<>.", c)) {
         switch (c) {
             case '+': token = new Token(Token::PLUS, c); break;
             case '-': token = new Token(Token::MINUS, c); break;
@@ -136,6 +136,7 @@ Token* Scanner::nextToken() {
             case ',': token = new Token(Token::COMA, c); break;
             case '?': token = new Token(Token::QUESTION, c); break;
             case ':': token = new Token(Token::COLON, c); break;
+            case '.': token = new Token(Token::DOT, c); break;
             default: token = new Token(Token::ERR, c); break;
         }
         current++;

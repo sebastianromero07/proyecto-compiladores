@@ -1,25 +1,12 @@
-#include <stdio.h>
-
-struct Contenedor {
-    int valor;  
+struct Persona {
+    int edad;
+    float salario;
 };
 
-int sumar_contenedor(struct Contenedor c, int delta) {
-    int r;
-    r = c + delta;
-    return r;
-}
-
 int main() {
-    struct Contenedor c1;  
-    int d;
-    int resultado;
-    c1 = 10;           
-    d  = 5;
-    resultado = sumar_contenedor(c1, d);
-    printf("c1 = %d\n", c1);
-    printf("d  = %d\n", d);
-    printf("resultado = %d\n", resultado);
-
+    struct Persona p;
+    p.edad = 20 + 8;
+    p.salario = 1500.50;
+    printf("%d %f\n", p.edad, p.salario);
     return 0;
 }

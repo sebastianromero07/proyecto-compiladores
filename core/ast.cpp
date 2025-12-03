@@ -163,6 +163,17 @@ int FcallExp::accept(Visitor* visitor) {
     return visitor->visit(this);
 }
 
+// ------------------ StructAccessExp ------------------
+StructAccessExp::StructAccessExp(Exp* left, string id) : left(left), id(id) {}
+
+StructAccessExp::~StructAccessExp() {
+    delete left;
+}
+
+int StructAccessExp::accept(Visitor* visitor) {
+    return visitor->visit(this);
+}
+
 // ------------------ VarDec ------------------
 VarDec::VarDec(TypeDecl* t) : type(t) {}
 
@@ -209,9 +220,10 @@ int Body::accept(Visitor* visitor) {
 }
 
 // ------------------ AssignStm ------------------
-AssignStm::AssignStm(string id, Exp* rhs) : id(id), rhs(rhs) {}
+AssignStm::AssignStm(Exp* lhs, Exp* rhs) : lhs(lhs), rhs(rhs) {}
 
 AssignStm::~AssignStm() {
+    delete lhs;
     delete rhs;
 }
 

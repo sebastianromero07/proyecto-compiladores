@@ -122,6 +122,16 @@ public:
     ~FcallExp();
 };
 
+class StructAccessExp : public Exp {
+public:
+    Exp* left;
+    string id;
+    
+    StructAccessExp(Exp* left, string id);
+    int accept(Visitor* visitor);
+    ~StructAccessExp();
+};
+
 class Stm {
 public:
     virtual int accept(Visitor* visitor) = 0;
@@ -173,10 +183,10 @@ public:
 
 class AssignStm : public Stm {
 public:
-    string id;
+    Exp* lhs;
     Exp* rhs;
     
-    AssignStm(string id, Exp* rhs);
+    AssignStm(Exp* lhs, Exp* rhs);
     int accept(Visitor* visitor);
     ~AssignStm();
 };

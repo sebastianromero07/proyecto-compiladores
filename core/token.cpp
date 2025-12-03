@@ -47,6 +47,7 @@ ostream& operator<<(ostream& outs, const Token& tok) {
         case Token::STRUCT:    outs << "TOKEN(STRUCT, \""    << tok.text << "\")"; break;
         case Token::INCLUDE:     outs << "TOKEN(INCLUDE, \""     << tok.text << "\")"; break;
         case Token::PREPROCESSOR: outs << "TOKEN(PREPROCESSOR, \"" << tok.text << "\")"; break;
+        case Token::DOT:       outs << "TOKEN(DOT, \""       << tok.text << "\")"; break;
         
         case Token::END:       outs << "TOKEN(END)"; break;
         case Token::ERR:       outs << "TOKEN(ERR, \""       << tok.text << "\")"; break;
