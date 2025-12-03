@@ -782,38 +782,52 @@ int CodeGenerator::visit(FunDec* fd) {
 }
 
 int CodeGenerator::visit(AssignStm* stm) {
-    // New assignment logic handling Exp* lhs
+    // Optimización: Si el LHS es un IdExp simple, generar código más eficiente
+    IdExp* idLhs = dynamic_cast<IdExp*>(stm->lhs);
     
-    // 1. Calculate address of LHS
+    if (idLhs && localVars.check(idLhs->value)) {
+        // Caso simple: variable local
+        int lhsOffset = localVars.lookup(idLhs->value);
+        
+        // Evaluar RHS
+        stm->rhs->accept(this);
+        
+        // Almacenar directamente
+        if (isFloat) {
+            out << "    movsd %xmm0, " << lhsOffset << "(%rbp)\n";
+        } else {
+            out << "    movq %rax, " << lhsOffset << "(%rbp)\n";
+        }
+        
+        // Propagación de constantes (opcional)
+        int cv;
+        if (stm->rhs->isConstant(cv)) {
+            isConst[idLhs->value] = true;
+            constVal[idLhs->value] = cv;
+        } else {
+            isConst[idLhs->value] = false;
+        }
+        
+        return 0;
+    }
+    
+    // Caso general: usar leaq para LHS complejos (structs, arrays, etc.)
     wantAddress = true;
-    stm->lhs->accept(this); // Address in %rax
+    stm->lhs->accept(this);
     wantAddress = false;
     
-    out << "    pushq %rax\n"; // Save address
+    out << "    pushq %rax\n";
     
-    // 2. Evaluate RHS
-    stm->rhs->accept(this); // Value in %rax or %xmm0
+    stm->rhs->accept(this);
     
-    // 3. Store
-    out << "    popq %rcx\n"; // Address in %rcx
+    out << "    popq %rcx\n";
     
     if (isFloat) {
         out << "    movsd %xmm0, (%rcx)\n";
     } else {
         out << "    movq %rax, (%rcx)\n";
     }
-
-    // Const propagation logic (simplified, only for simple IDs)
-    if (auto idExp = dynamic_cast<IdExp*>(stm->lhs)) {
-        int v;
-        if (evalConstExpr(stm->rhs, v)) {
-            isConst[idExp->value]  = true;
-            constVal[idExp->value] = v;
-        } else {
-            isConst[idExp->value] = false;
-        }
-    }
-
+    
     return 0;
 }
 

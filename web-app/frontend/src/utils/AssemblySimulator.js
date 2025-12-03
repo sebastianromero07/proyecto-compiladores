@@ -1,16 +1,12 @@
 export class AssemblySimulator {
   constructor(assemblyCode) {
-    // Limpiar caracteres de Windows (\r) y dividir líneas
     this.lines = assemblyCode.replace(/\r/g, '').split('\n');
     this.labels = this.parseLabels();
     
     console.log('=== SIMULADOR INICIALIZADO ===');
-    console.log('Total de líneas:', this.lines.length);
     console.log('Labels encontradas:', this.labels);
     
-    // Estado inicial - buscar main
     this.ip = this.labels['main'] !== undefined ? this.labels['main'] : 0;
-    console.log('IP inicial (main):', this.ip);
     
     this.registers = {
       rax: 0, rbx: 0, rcx: 0, rdx: 0,
@@ -22,23 +18,17 @@ export class AssemblySimulator {
     this.stack = [];
     this.callStack = [];
     this.finished = false;
-
+    
     this.updateStackView();
-
   }
 
   parseLabels() {
     const map = {};
     this.lines.forEach((line, index) => {
       const cleanLine = line.trim();
-      
-      // Detectar etiquetas: cualquier cosa que termine en ":" y no sea una directiva .string
-      // Ejemplos: "suma:", ".end_suma:", "main:"
       if (cleanLine.endsWith(':') && !cleanLine.includes('.string')) {
-        // Extraer el nombre de la etiqueta (sin los dos puntos)
         const labelName = cleanLine.slice(0, -1).trim();
         map[labelName] = index;
-        console.log(`Label: '${labelName}' -> línea ${index}`);
       }
     });
     return map;
@@ -47,10 +37,13 @@ export class AssemblySimulator {
   getOperandValue(operand) {
     operand = operand.trim();
     
+    // Inmediato: $123
     if (operand.startsWith('$')) {
-      return parseInt(operand.substring(1));
+      const val = operand.substring(1);
+      return parseFloat(val) || parseInt(val) || 0;
     }
     
+    // Registro: %rax, %eax, etc.
     if (operand.startsWith('%')) {
       const reg = operand.substring(1).toLowerCase();
       const regMap = { 'eax': 'rax', 'ebx': 'rbx', 'ecx': 'rcx', 'edx': 'rdx' };
@@ -58,6 +51,15 @@ export class AssemblySimulator {
       return this.registers[actualReg] || 0;
     }
     
+    // Memoria indirecta simple: (%rcx) o (%rsp)
+    const simpleMemMatch = operand.match(/^\(%(r[a-z0-9]+)\)$/);
+    if (simpleMemMatch) {
+      const baseReg = simpleMemMatch[1];
+      const addr = this.registers[baseReg] || 0;
+      return this.memory[addr] || 0;
+    }
+    
+    // Memoria con offset: -8(%rbp) o 0(%rsp)
     const memMatch = operand.match(/^(-?\d*)\(%([a-z0-9]+)\)$/);
     if (memMatch) {
       const offset = memMatch[1] ? parseInt(memMatch[1]) : 0;
@@ -69,9 +71,10 @@ export class AssemblySimulator {
     return 0;
   }
 
-  setOperandValue(operand, value) {
+    setOperandValue(operand, value) {
     operand = operand.trim();
     
+    // Registro
     if (operand.startsWith('%')) {
       const reg = operand.substring(1).toLowerCase();
       const regMap = { 'eax': 'rax', 'ebx': 'rbx', 'ecx': 'rcx', 'edx': 'rdx' };
@@ -82,31 +85,52 @@ export class AssemblySimulator {
       return;
     }
     
+    // Memoria indirecta simple: (%rcx)
+    const simpleMemMatch = operand.match(/^\(%(r[a-z0-9]+)\)$/);
+    if (simpleMemMatch) {
+      const baseReg = simpleMemMatch[1];
+      const addr = this.registers[baseReg] || 0;
+      this.memory[addr] = value;  // <-- Esto marca que addr fue escrito
+      console.log(`[MEM] Escribiendo ${value} en dirección ${addr}`);
+      this.updateStackView();
+      return;
+    }
+    
+    // Memoria con offset: -8(%rbp)
     const memMatch = operand.match(/^(-?\d*)\(%([a-z0-9]+)\)$/);
     if (memMatch) {
       const offset = memMatch[1] ? parseInt(memMatch[1]) : 0;
       const baseReg = memMatch[2];
       const addr = (this.registers[baseReg] || 0) + offset;
-      this.memory[addr] = value;
+      this.memory[addr] = value;  // <-- Esto marca que addr fue escrito
+      console.log(`[MEM] Escribiendo ${value} en dirección ${addr} (${baseReg}${offset >= 0 ? '+' : ''}${offset})`);
       this.updateStackView();
+      return;
     }
   }
 
-  updateStackView() {
+      updateStackView() {
     this.stack = [];
     const rbp = this.registers.rbp;
     const rsp = this.registers.rsp;
     
-    for (let addr = rbp + 16; addr >= rsp - 48; addr -= 8) {
-      const value = this.memory[addr] || 0;
+    // Mostrar desde rbp+16 hasta rsp-16
+    const startAddr = rbp + 16;
+    const endAddr = Math.min(rsp - 16, rbp - 64);
+    
+    for (let addr = startAddr; addr >= endAddr; addr -= 8) {
+      // IMPORTANTE: Verificar si la dirección fue escrita (existe en memoria)
+      const hasBeenWritten = Object.prototype.hasOwnProperty.call(this.memory, addr);
+      const value = this.memory[addr] !== undefined ? this.memory[addr] : 0;
       
       this.stack.push({
         address: addr,
         offset: addr - rbp,
         value: value,
-        desc: addr === rbp ? 'RBP' : (addr === rsp ? 'RSP' : ''),
         isRbp: addr === rbp,
-        isRsp: addr === rsp
+        isRsp: addr === rsp,
+        // Mostrar el valor si fue escrito EN CUALQUIER MOMENTO, incluso si es 0
+        hasValue: hasBeenWritten
       });
     }
   }
@@ -114,19 +138,39 @@ export class AssemblySimulator {
   step() {
     if (this.ip >= this.lines.length || this.finished) return;
 
-    const currentIp = this.ip;
     let line = this.lines[this.ip].trim();
     
-    console.log(`[STEP] Línea ${this.ip}: "${line}"`);
+    console.log(`[STEP ${this.ip}] "${line}"`);
     
-    // Saltar líneas vacías, etiquetas, o directivas
-    if (line === '' || 
-        line.endsWith(':') || 
+    // Saltar líneas vacías, etiquetas, directivas
+    if (line === '' || line.endsWith(':') || 
         (line.startsWith('.') && !line.includes(':'))) {
       this.ip++;
       if (this.ip < this.lines.length && !this.finished) {
         this.step();
       }
+      return;
+    }
+
+    // === LEAQ (Load Effective Address) ===
+    if (line.startsWith('leaq')) {
+      const match = line.match(/leaq\s+(.+),\s*(%\w+)/);
+      if (match) {
+        const src = match[1].trim();
+        const dst = match[2].trim();
+        
+        // Calcular dirección efectiva
+        const memMatch = src.match(/^(-?\d*)\(%([a-z0-9]+)\)$/);
+        if (memMatch) {
+          const offset = memMatch[1] ? parseInt(memMatch[1]) : 0;
+          const baseReg = memMatch[2];
+          const addr = (this.registers[baseReg] || 0) + offset;
+          this.setOperandValue(dst, addr);
+          console.log(`[LEAQ] ${dst} = ${addr} (${baseReg}${offset >= 0 ? '+' : ''}${offset})`);
+        }
+      }
+      this.ip++;
+      this.updateRip();
       return;
     }
 
@@ -138,23 +182,17 @@ export class AssemblySimulator {
       if (target) {
         target = target.replace('@PLT', '').trim();
         
-        console.log(`[CALL] Objetivo: '${target}'`);
-        console.log(`[CALL] Labels disponibles:`, Object.keys(this.labels));
-        console.log(`[CALL] ¿Existe '${target}'?:`, this.labels[target] !== undefined);
+        console.log(`[CALL] -> ${target}`);
         
-        // Push dirección de retorno
         const returnAddress = this.ip + 1;
         this.registers.rsp -= 8;
         this.memory[this.registers.rsp] = returnAddress;
         this.callStack.push(returnAddress);
         
-        // Saltar a la función
         if (this.labels[target] !== undefined) {
-          const targetLine = this.labels[target];
-          console.log(`[CALL] Saltando de línea ${this.ip} a línea ${targetLine}`);
-          this.ip = targetLine;
+          this.ip = this.labels[target];
         } else {
-          console.warn(`[CALL] Función externa '${target}', continuando...`);
+          console.warn(`[CALL] Función externa: ${target}`);
           this.ip++;
         }
         
@@ -168,12 +206,12 @@ export class AssemblySimulator {
     if (line === 'ret') {
       if (this.callStack.length > 0) {
         const returnIp = this.callStack.pop();
-        console.log(`[RET] Volviendo a línea ${returnIp}`);
         this.ip = returnIp;
         this.registers.rsp += 8;
+        console.log(`[RET] -> línea ${returnIp}`);
       } else {
-        console.log(`[RET] Fin del programa`);
         this.finished = true;
+        console.log(`[RET] Fin del programa`);
       }
       this.updateStackView();
       this.updateRip();
@@ -197,6 +235,7 @@ export class AssemblySimulator {
       const value = this.getOperandValue(operand);
       this.registers.rsp -= 8;
       this.memory[this.registers.rsp] = value;
+      console.log(`[PUSH] ${operand} = ${value} -> RSP=${this.registers.rsp}`);
       this.ip++;
       this.updateStackView();
       this.updateRip();
@@ -209,6 +248,7 @@ export class AssemblySimulator {
       const value = this.memory[this.registers.rsp] || 0;
       this.setOperandValue(operand, value);
       this.registers.rsp += 8;
+      console.log(`[POP] ${operand} = ${value}, RSP=${this.registers.rsp}`);
       this.ip++;
       this.updateStackView();
       this.updateRip();
@@ -217,12 +257,14 @@ export class AssemblySimulator {
 
     // === MOV (movq, movl, movsd) ===
     if (line.match(/^mov[qlsd]+/)) {
-      const parts = line.replace(/^mov[qlsd]+\s+/, '').split(',');
+      const rest = line.replace(/^mov[qlsd]+\s+/, '');
+      const parts = rest.split(',');
       if (parts.length === 2) {
         const src = parts[0].trim();
         const dst = parts[1].trim();
         const value = this.getOperandValue(src);
         this.setOperandValue(dst, value);
+        console.log(`[MOV] ${dst} = ${value}`);
       }
       this.ip++;
       this.updateStackView();
@@ -238,6 +280,7 @@ export class AssemblySimulator {
         const dst = parts[1].trim();
         const currentVal = this.getOperandValue(dst);
         this.setOperandValue(dst, currentVal - src);
+        console.log(`[SUB] ${dst} = ${currentVal} - ${src} = ${currentVal - src}`);
       }
       this.ip++;
       this.updateStackView();
@@ -253,8 +296,10 @@ export class AssemblySimulator {
         const dst = parts[1].trim();
         const currentVal = this.getOperandValue(dst);
         this.setOperandValue(dst, currentVal + src);
+        console.log(`[ADD] ${dst} = ${currentVal} + ${src} = ${currentVal + src}`);
       }
       this.ip++;
+      this.updateStackView();
       this.updateRip();
       return;
     }
@@ -263,8 +308,8 @@ export class AssemblySimulator {
     if (line.startsWith('jmp')) {
       const target = line.split(/\s+/)[1];
       if (this.labels[target] !== undefined) {
-        console.log(`[JMP] Saltando a '${target}' (línea ${this.labels[target]})`);
         this.ip = this.labels[target];
+        console.log(`[JMP] -> ${target} (línea ${this.ip})`);
       } else {
         this.ip++;
       }
@@ -272,7 +317,8 @@ export class AssemblySimulator {
       return;
     }
 
-    // === Otras instrucciones (leaq, cmpq, etc.) ===
+    // === Instrucciones no manejadas ===
+    console.log(`[SKIP] Instrucción no manejada: ${line}`);
     this.ip++;
     this.updateStackView();
     this.updateRip();

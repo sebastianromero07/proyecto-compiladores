@@ -291,10 +291,11 @@ int main() {
       }
       
       return simulatorStack.map(item => ({
-        address: '0x' + item.address.toString(16),
+        address: item.address.toString(16).padStart(3, '0'),
         offset: item.offset,
-        value: '0x' + item.value.toString(16),
-        hasValue: item.value !== 0,
+        value: item.value.toString(16),
+        // IMPORTANTE: Usar hasValue del simulador, NO recalcular aquí
+        hasValue: item.hasValue,
         isRbp: item.isRbp,
         isRsp: item.isRsp
       }));

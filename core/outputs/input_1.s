@@ -6,16 +6,13 @@ suma:
     movq %rdi, -8(%rbp)
     movq %rsi, -16(%rbp)
     movq $0, -24(%rbp)
-    leaq -24(%rbp), %rax
-    pushq %rax
     movq -8(%rbp), %rax
     pushq %rax
     movq -16(%rbp), %rax
     movq %rax, %rcx
     popq %rax
     addq %rcx, %rax
-    popq %rcx
-    movq %rax, (%rcx)
+    movq %rax, -24(%rbp)
     movq -24(%rbp), %rax
     jmp .end_suma
 .end_suma:
@@ -29,26 +26,17 @@ main:
     movq $0, -8(%rbp)
     movq $0, -16(%rbp)
     movq $0, -24(%rbp)
-    leaq -8(%rbp), %rax
-    pushq %rax
     movq $2, %rax
-    popq %rcx
-    movq %rax, (%rcx)
-    leaq -16(%rbp), %rax
-    pushq %rax
+    movq %rax, -8(%rbp)
     movq $3, %rax
-    popq %rcx
-    movq %rax, (%rcx)
-    leaq -24(%rbp), %rax
-    pushq %rax
+    movq %rax, -16(%rbp)
     movq -8(%rbp), %rax
     movq %rax, %rdi
     movq -16(%rbp), %rax
     movq %rax, %rsi
     movl $0, %eax
     call suma@PLT
-    popq %rcx
-    movq %rax, (%rcx)
+    movq %rax, -24(%rbp)
 .data
 str_0: .string "suma = %d\n"
 .text
