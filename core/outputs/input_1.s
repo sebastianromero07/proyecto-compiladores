@@ -41,11 +41,9 @@ main:
 str_0: .string "suma = %d\n"
 .text
     movq -24(%rbp), %rax
-    pushq %rax
-    movq 0(%rsp), %rsi
-    addq $8, %rsp
-    leaq str_0(%rip), %rdi
+    movq %rax, %rsi
     movl $0, %eax
+    leaq str_0(%rip), %rdi
     call printf@PLT
     movq $0, %rax
     jmp .end_main

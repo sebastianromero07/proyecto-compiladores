@@ -98,12 +98,7 @@ private:
     unordered_map<string, int> globalInitializers;
     int labelCount = 0;
     int stringCounter = 0;
-    string getStringLabel(const string& s) {
-        if (stringLabels.count(s)) return stringLabels[s];
-        string label = ".S" + to_string(stringCounter++);
-        stringLabels[s] = label;
-        return label;
-    }
+    string getStringLabel(const string& s);
 public:
     TypeCheckerVisitor typeChecker;
     unordered_map<string,int> fun_memoria;

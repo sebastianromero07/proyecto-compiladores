@@ -428,110 +428,68 @@ int CodeGenerator::visit(FcallExp* exp) {
     if (exp->fname == "printf") {
         if (exp->args.empty()) return 0;
         
-
         auto it = exp->args.begin();
         Exp* formatExp = *it;
         StringExp* strExp = dynamic_cast<StringExp*>(formatExp);
         
         if (strExp) {
-            string label = "str_" + to_string(labelCount++);
-            out << ".data\n";
-            out << label << ": .string " << strExp->value << "\n";
-            out << ".text\n";
+            string label = getStringLabel(strExp->value);
             
-            // Evaluate arguments and push to stack
-            vector<bool> argTypes; // true for float, false for int
-            it++; // Skip format
+            // Procesar argumentos adicionales
+            ++it;
+            int argIndex = 0;
+            int xmmIndex = 0;
             
-            for (; it != exp->args.end(); ++it) {
-                (*it)->accept(this);
-                if (isFloat) {
-                    out << "    subq $8, %rsp\n";
-                    out << "    movsd %xmm0, (%rsp)\n";
-                    argTypes.push_back(true);
-                } else {
-                    out << "    pushq %rax\n";
-                    argTypes.push_back(false);
-                }
-            }
-            
-            // Pop arguments into registers
-            vector<string> gp_regs = {"%rsi", "%rdx", "%rcx", "%r8", "%r9"};
-            int gp_idx = 0;
-            int xmm_idx = 0;
-            int n_args = argTypes.size();
-            
-            for (int i = 0; i < n_args; ++i) {
-                int offset = (n_args - 1 - i) * 8;
-                if (argTypes[i]) {
-                    if (xmm_idx < 8) {
-                        out << "    movsd " << offset << "(%rsp), %xmm" << xmm_idx++ << "\n";
-                    }
-                } else {
-                    if (gp_idx < 5) {
-                        out << "    movq " << offset << "(%rsp), " << gp_regs[gp_idx++] << "\n";
-                    }
-                }
-            }
-            
-            // Clean up stack
-            if (n_args > 0) {
-                out << "    addq $" << (n_args * 8) << ", %rsp\n";
-            }
-            
-            out << "    leaq " << label << "(%rip), %rdi\n";
-            out << "    movl $" << xmm_idx << ", %eax\n";
-            out << "    call printf@PLT\n";
-            
-        } else {
-            formatExp->accept(this);
-            out << "    movq %rax, %rdi\n";
-            it++;
-            
-            int gp_reg_idx = 0; 
-            int xmm_reg_idx = 0; 
-            vector<string> gp_regs = {"%rsi", "%rdx", "%rcx", "%r8", "%r9"};
-            
-            for (; it != exp->args.end(); ++it) {
-                (*it)->accept(this); 
+            while (it != exp->args.end()) {
+                Exp* arg = *it;
+                arg->accept(this);
                 
                 if (isFloat) {
-                    if (xmm_reg_idx < 8) {
-                        if (xmm_reg_idx > 0) {
-                            out << "    movsd %xmm0, %xmm" << xmm_reg_idx << "\n";
-                        }
-                        xmm_reg_idx++;
-                    } else {
-                 
+                    // Para floats, ya están en %xmm0
+                    if (xmmIndex > 0) {
+                        out << "    movsd %xmm0, %xmm" << xmmIndex << "\n";
                     }
+                    xmmIndex++;
                 } else {
-                    if (gp_reg_idx < 5) {
-                        out << "    movq %rax, " << gp_regs[gp_reg_idx++] << "\n";
-                    } else {
-                        out << "    pushq %rax\n";
+                    // Para enteros
+                    switch (argIndex) {
+                        case 0: out << "    movq %rax, %rsi\n"; break;
+                        case 1: out << "    movq %rax, %rdx\n"; break;
+                        case 2: out << "    movq %rax, %rcx\n"; break;
+                        case 3: out << "    movq %rax, %r8\n"; break;
+                        case 4: out << "    movq %rax, %r9\n"; break;
+                        default: break;
                     }
+                    argIndex++;
                 }
+                ++it;
             }
             
-            out << "    movl $" << xmm_reg_idx << ", %eax\n"; 
+            out << "    movl $" << xmmIndex << ", %eax\n";
+            out << "    leaq " << label << "(%rip), %rdi\n";
             out << "    call printf@PLT\n";
         }
         
     } else {
+        // Otras funciones (no printf)
         vector<string> argRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
         int xmm_idx = 0;
+        int gp_idx = 0;
         
         for (size_t i = 0; i < exp->args.size() && i < 6; i++) {
             exp->args[i]->accept(this);
+            
             if (isFloat) {
                 if (xmm_idx > 0) {
-                        out << "    movsd %xmm0, %xmm" << xmm_idx << "\n";
+                    out << "    movsd %xmm0, %xmm" << xmm_idx << "\n";
                 }
                 xmm_idx++;
             } else {
-                 out << "    movq %rax, " << argRegs[i] << "\n";
+                out << "    movq %rax, " << argRegs[gp_idx] << "\n";
+                gp_idx++;
             }
         }
+        
         out << "    movl $" << xmm_idx << ", %eax\n";
         out << "    call " << exp->fname << "@PLT\n";
     }
@@ -840,70 +798,47 @@ int CodeGenerator::visit(PrintStm* stm) {
     StringExp* strExp = dynamic_cast<StringExp*>(formatExp);
     
     if (strExp) {
-        string label = "str_" + to_string(labelCount++);
-        out << ".data\n";
-        out << label << ": .string " << strExp->value << "\n";
-        out << ".text\n";
+        string label = getStringLabel(strExp->value);
         
-        // Evaluate arguments and push to stack
-        vector<bool> argTypes; // true for float, false for int
-        it++; // Skip format
+        // Procesar argumentos adicionales (después del formato)
+        ++it;
+        int argIndex = 0;
+        int xmmIndex = 0;
         
-        for (; it != stm->args.end(); ++it) {
-            (*it)->accept(this);
-            if (isFloat) {
-                out << "    subq $8, %rsp\n";
-                out << "    movsd %xmm0, (%rsp)\n";
-                argTypes.push_back(true);
-            } else {
-                out << "    pushq %rax\n";
-                argTypes.push_back(false);
-            }
-        }
-        
-        // Pop arguments into registers
-        vector<string> gp_regs = {"%rsi", "%rdx", "%rcx", "%r8", "%r9"};
-        int gp_idx = 0;
-        int xmm_idx = 0;
-        int n_args = argTypes.size();
-        
-        for (int i = 0; i < n_args; ++i) {
-            int offset = (n_args - 1 - i) * 8;
-            if (argTypes[i]) {
-                if (xmm_idx < 8) {
-                    out << "    movsd " << offset << "(%rsp), %xmm" << xmm_idx++ << "\n";
-                }
-            } else {
-                if (gp_idx < 5) {
-                    out << "    movq " << offset << "(%rsp), " << gp_regs[gp_idx++] << "\n";
-                }
-            }
-        }
-        
-        // Clean up stack
-        if (n_args > 0) {
-            out << "    addq $" << (n_args * 8) << ", %rsp\n";
-        }
-        
-        out << "    leaq " << label << "(%rip), %rdi\n";
-        out << "    movl $" << xmm_idx << ", %eax\n";
-        out << "    call printf@PLT\n";
-        
-    } else {
-        // Fallback for non-string literal format (not fully supported by this fix but kept for safety)
-        for (auto arg : stm->args) {
-            arg->accept(this); 
+        while (it != stm->args.end()) {
+            Exp* arg = *it;
+            arg->accept(this);
             
             if (isFloat) {
-                out << "    leaq print_float_fmt(%rip), %rdi\n";
-                out << "    movl $1, %eax\n"; 
+                // Para floats, ya están en %xmm0, moverlos al registro XMM correspondiente
+                if (xmmIndex > 0) {
+                    out << "    movsd %xmm0, %xmm" << xmmIndex << "\n";
+                }
+                xmmIndex++;
             } else {
-                out << "    movq %rax, %rsi\n";
-                out << "    leaq print_fmt(%rip), %rdi\n";
-                out << "    movl $0, %eax\n";
+                // Para enteros, mover de %rax al registro correspondiente
+                // printf usa: %rsi, %rdx, %rcx, %r8, %r9 para args después del formato
+                switch (argIndex) {
+                    case 0: out << "    movq %rax, %rsi\n"; break;
+                    case 1: out << "    movq %rax, %rdx\n"; break;
+                    case 2: out << "    movq %rax, %rcx\n"; break;
+                    case 3: out << "    movq %rax, %r8\n"; break;
+                    case 4: out << "    movq %rax, %r9\n"; break;
+                    default: break; // Más de 5 argumentos irían al stack
+                }
+                argIndex++;
             }
-            out << "    call printf@PLT\n";
+            ++it;
         }
+        
+        // Configurar el número de registros XMM usados
+        out << "    movl $" << xmmIndex << ", %eax\n";
+        
+        // Cargar la dirección del formato en %rdi
+        out << "    leaq " << label << "(%rip), %rdi\n";
+        
+        // Llamar a printf
+        out << "    call printf@PLT\n";
     }
     
     return 0;
@@ -1041,4 +976,18 @@ int CodeGenerator::visit(Program* prog) {
         fd->accept(this);
     }
     return 0;
+}
+
+string CodeGenerator::getStringLabel(const string& s) {
+    if (stringLabels.count(s)) return stringLabels[s];
+    
+    string label = "str_" + to_string(stringCounter++);
+    stringLabels[s] = label;
+    
+    // Emitir la definición del string
+    out << ".data\n";
+    out << label << ": .string " << s << "\n";
+    out << ".text\n";
+    
+    return label;
 }

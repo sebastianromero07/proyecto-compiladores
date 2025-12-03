@@ -14,6 +14,12 @@ export class AssemblySimulator {
       rip: this.ip, r8: 0
     };
     
+    // Registros de punto flotante
+    this.xmmRegisters = {
+      xmm0: 0.0, xmm1: 0.0, xmm2: 0.0, xmm3: 0.0,
+      xmm4: 0.0, xmm5: 0.0, xmm6: 0.0, xmm7: 0.0
+    };
+    
     this.memory = {};
     this.stack = [];
     this.callStack = [];
@@ -26,7 +32,8 @@ export class AssemblySimulator {
     const map = {};
     this.lines.forEach((line, index) => {
       const cleanLine = line.trim();
-      if (cleanLine.endsWith(':') && !cleanLine.includes('.string')) {
+      // Labels terminan en : pero no son .string o .double
+      if (cleanLine.endsWith(':') && !cleanLine.includes('.string') && !cleanLine.includes('.double')) {
         const labelName = cleanLine.slice(0, -1).trim();
         map[labelName] = index;
       }
@@ -43,7 +50,13 @@ export class AssemblySimulator {
       return parseFloat(val) || parseInt(val) || 0;
     }
     
-    // Registro: %rax, %eax, etc.
+    // Registro XMM: %xmm0, %xmm1, etc.
+    if (operand.startsWith('%xmm')) {
+      const reg = operand.substring(1).toLowerCase();
+      return this.xmmRegisters[reg] || 0.0;
+    }
+    
+    // Registro general: %rax, %eax, etc.
     if (operand.startsWith('%')) {
       const reg = operand.substring(1).toLowerCase();
       const regMap = { 'eax': 'rax', 'ebx': 'rbx', 'ecx': 'rcx', 'edx': 'rdx' };
@@ -68,13 +81,54 @@ export class AssemblySimulator {
       return this.memory[addr] || 0;
     }
     
+    // Acceso RIP-relative: .FL0(%rip) o str_0(%rip)
+    const ripMatch = operand.match(/^([.\w]+)\(%rip\)$/);
+    if (ripMatch) {
+      const label = ripMatch[1];
+      // Buscar el valor en la sección .data
+      return this.getDataValue(label);
+    }
+    
     return 0;
   }
 
-    setOperandValue(operand, value) {
+  getDataValue(label) {
+    // Buscar la definición del label en las líneas
+    for (let i = 0; i < this.lines.length; i++) {
+      const line = this.lines[i].trim();
+      if (line.startsWith(label + ':')) {
+        // Buscar el valor en la misma línea o la siguiente
+        const match = line.match(/\.double\s+([\d.]+)/);
+        if (match) {
+          return parseFloat(match[1]);
+        }
+        // Revisar siguiente línea si el valor está ahí
+        if (i + 1 < this.lines.length) {
+          const nextLine = this.lines[i + 1].trim();
+          const nextMatch = nextLine.match(/\.double\s+([\d.]+)/);
+          if (nextMatch) {
+            return parseFloat(nextMatch[1]);
+          }
+        }
+      }
+    }
+    return 0;
+  }
+
+  setOperandValue(operand, value) {
     operand = operand.trim();
     
-    // Registro
+    // Registro XMM
+    if (operand.startsWith('%xmm')) {
+      const reg = operand.substring(1).toLowerCase();
+      if (this.xmmRegisters[reg] !== undefined) {
+        this.xmmRegisters[reg] = value;
+        console.log(`[XMM] ${reg} = ${value}`);
+      }
+      return;
+    }
+    
+    // Registro general
     if (operand.startsWith('%')) {
       const reg = operand.substring(1).toLowerCase();
       const regMap = { 'eax': 'rax', 'ebx': 'rbx', 'ecx': 'rcx', 'edx': 'rdx' };
@@ -90,7 +144,7 @@ export class AssemblySimulator {
     if (simpleMemMatch) {
       const baseReg = simpleMemMatch[1];
       const addr = this.registers[baseReg] || 0;
-      this.memory[addr] = value;  // <-- Esto marca que addr fue escrito
+      this.memory[addr] = value;
       console.log(`[MEM] Escribiendo ${value} en dirección ${addr}`);
       this.updateStackView();
       return;
@@ -102,14 +156,14 @@ export class AssemblySimulator {
       const offset = memMatch[1] ? parseInt(memMatch[1]) : 0;
       const baseReg = memMatch[2];
       const addr = (this.registers[baseReg] || 0) + offset;
-      this.memory[addr] = value;  // <-- Esto marca que addr fue escrito
+      this.memory[addr] = value;
       console.log(`[MEM] Escribiendo ${value} en dirección ${addr} (${baseReg}${offset >= 0 ? '+' : ''}${offset})`);
       this.updateStackView();
       return;
     }
   }
 
-      updateStackView() {
+  updateStackView() {
     this.stack = [];
     const rbp = this.registers.rbp;
     const rsp = this.registers.rsp;
@@ -119,7 +173,6 @@ export class AssemblySimulator {
     const endAddr = Math.min(rsp - 16, rbp - 64);
     
     for (let addr = startAddr; addr >= endAddr; addr -= 8) {
-      // IMPORTANTE: Verificar si la dirección fue escrita (existe en memoria)
       const hasBeenWritten = Object.prototype.hasOwnProperty.call(this.memory, addr);
       const value = this.memory[addr] !== undefined ? this.memory[addr] : 0;
       
@@ -129,7 +182,6 @@ export class AssemblySimulator {
         value: value,
         isRbp: addr === rbp,
         isRsp: addr === rsp,
-        // Mostrar el valor si fue escrito EN CUALQUIER MOMENTO, incluso si es 0
         hasValue: hasBeenWritten
       });
     }
@@ -142,13 +194,137 @@ export class AssemblySimulator {
     
     console.log(`[STEP ${this.ip}] "${line}"`);
     
-    // Saltar líneas vacías, etiquetas, directivas
-    if (line === '' || line.endsWith(':') || 
-        (line.startsWith('.') && !line.includes(':'))) {
+    // Saltar líneas vacías, etiquetas, directivas .data, .text, .section, .globl
+    if (line === '' || 
+        line.endsWith(':') || 
+        line === '.data' || 
+        line === '.text' ||
+        line.startsWith('.section') ||
+        line.startsWith('.globl') ||
+        line.startsWith('.double') ||
+        line.startsWith('.string')) {
       this.ip++;
       if (this.ip < this.lines.length && !this.finished) {
         this.step();
       }
+      return;
+    }
+
+    // === MOVSD (Move Scalar Double) ===
+    if (line.startsWith('movsd')) {
+      const rest = line.replace('movsd', '').trim();
+      const parts = this.splitOperands(rest);
+      if (parts.length === 2) {
+        const src = parts[0].trim();
+        const dst = parts[1].trim();
+        const value = this.getOperandValue(src);
+        this.setOperandValue(dst, value);
+        console.log(`[MOVSD] ${dst} = ${value}`);
+      }
+      this.ip++;
+      this.updateStackView();
+      this.updateRip();
+      return;
+    }
+
+    // === ADDSD (Add Scalar Double) ===
+    if (line.startsWith('addsd')) {
+      const rest = line.replace('addsd', '').trim();
+      const parts = this.splitOperands(rest);
+      if (parts.length === 2) {
+        const src = this.getOperandValue(parts[0].trim());
+        const dst = parts[1].trim();
+        const currentVal = this.getOperandValue(dst);
+        this.setOperandValue(dst, currentVal + src);
+        console.log(`[ADDSD] ${dst} = ${currentVal} + ${src} = ${currentVal + src}`);
+      }
+      this.ip++;
+      this.updateStackView();
+      this.updateRip();
+      return;
+    }
+
+    // === SUBSD (Subtract Scalar Double) ===
+    if (line.startsWith('subsd')) {
+      const rest = line.replace('subsd', '').trim();
+      const parts = this.splitOperands(rest);
+      if (parts.length === 2) {
+        const src = this.getOperandValue(parts[0].trim());
+        const dst = parts[1].trim();
+        const currentVal = this.getOperandValue(dst);
+        this.setOperandValue(dst, currentVal - src);
+        console.log(`[SUBSD] ${dst} = ${currentVal} - ${src} = ${currentVal - src}`);
+      }
+      this.ip++;
+      this.updateStackView();
+      this.updateRip();
+      return;
+    }
+
+    // === MULSD (Multiply Scalar Double) ===
+    if (line.startsWith('mulsd')) {
+      const rest = line.replace('mulsd', '').trim();
+      const parts = this.splitOperands(rest);
+      if (parts.length === 2) {
+        const src = this.getOperandValue(parts[0].trim());
+        const dst = parts[1].trim();
+        const currentVal = this.getOperandValue(dst);
+        this.setOperandValue(dst, currentVal * src);
+        console.log(`[MULSD] ${dst} = ${currentVal} * ${src} = ${currentVal * src}`);
+      }
+      this.ip++;
+      this.updateStackView();
+      this.updateRip();
+      return;
+    }
+
+    // === DIVSD (Divide Scalar Double) ===
+    if (line.startsWith('divsd')) {
+      const rest = line.replace('divsd', '').trim();
+      const parts = this.splitOperands(rest);
+      if (parts.length === 2) {
+        const src = this.getOperandValue(parts[0].trim());
+        const dst = parts[1].trim();
+        const currentVal = this.getOperandValue(dst);
+        const result = src !== 0 ? currentVal / src : 0;
+        this.setOperandValue(dst, result);
+        console.log(`[DIVSD] ${dst} = ${currentVal} / ${src} = ${result}`);
+      }
+      this.ip++;
+      this.updateStackView();
+      this.updateRip();
+      return;
+    }
+
+    // === CVTSI2SD (Convert Integer to Scalar Double) ===
+    if (line.startsWith('cvtsi2sd')) {
+      const rest = line.replace('cvtsi2sd', '').trim();
+      const parts = this.splitOperands(rest);
+      if (parts.length === 2) {
+        const src = this.getOperandValue(parts[0].trim());
+        const dst = parts[1].trim();
+        this.setOperandValue(dst, parseFloat(src));
+        console.log(`[CVTSI2SD] ${dst} = ${src} (int to double)`);
+      }
+      this.ip++;
+      this.updateStackView();
+      this.updateRip();
+      return;
+    }
+
+    // === CVTTSD2SI (Convert Scalar Double to Integer with Truncation) ===
+    if (line.startsWith('cvttsd2si')) {
+      const rest = line.replace('cvttsd2si', '').trim();
+      const parts = this.splitOperands(rest);
+      if (parts.length === 2) {
+        const src = this.getOperandValue(parts[0].trim());
+        const dst = parts[1].trim();
+        this.setOperandValue(dst, Math.trunc(src));
+        console.log(`[CVTTSD2SI] ${dst} = ${Math.trunc(src)} (double to int)`);
+      }
+      this.ip++;
+      this.updateStackView();
+      this.updateRip();
       return;
     }
 
@@ -167,6 +343,13 @@ export class AssemblySimulator {
           const addr = (this.registers[baseReg] || 0) + offset;
           this.setOperandValue(dst, addr);
           console.log(`[LEAQ] ${dst} = ${addr} (${baseReg}${offset >= 0 ? '+' : ''}${offset})`);
+        }
+        // RIP-relative (para strings)
+        const ripMatch = src.match(/^([.\w]+)\(%rip\)$/);
+        if (ripMatch) {
+          // Para strings, simplemente guardamos un valor simbólico
+          this.setOperandValue(dst, 0);
+          console.log(`[LEAQ] ${dst} = address of ${ripMatch[1]}`);
         }
       }
       this.ip++;
@@ -255,10 +438,10 @@ export class AssemblySimulator {
       return;
     }
 
-    // === MOV (movq, movl, movsd) ===
-    if (line.match(/^mov[qlsd]+/)) {
-      const rest = line.replace(/^mov[qlsd]+\s+/, '');
-      const parts = rest.split(',');
+    // === MOV (movq, movl) ===
+    if (line.match(/^mov[ql]+/)) {
+      const rest = line.replace(/^mov[ql]+\s+/, '');
+      const parts = this.splitOperands(rest);
       if (parts.length === 2) {
         const src = parts[0].trim();
         const dst = parts[1].trim();
@@ -324,6 +507,31 @@ export class AssemblySimulator {
     this.updateRip();
   }
 
+  // Helper para separar operandos correctamente (maneja comas dentro de paréntesis)
+  splitOperands(str) {
+    const result = [];
+    let current = '';
+    let parenDepth = 0;
+    
+    for (const char of str) {
+      if (char === '(') parenDepth++;
+      else if (char === ')') parenDepth--;
+      
+      if (char === ',' && parenDepth === 0) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    if (current.trim()) {
+      result.push(current.trim());
+    }
+    
+    return result;
+  }
+
   updateRip() {
     this.registers.rip = this.ip;
   }
@@ -332,6 +540,7 @@ export class AssemblySimulator {
     return {
       line: this.ip,
       registers: { ...this.registers },
+      xmmRegisters: { ...this.xmmRegisters },
       stack: [...this.stack],
       memory: { ...this.memory }
     };
