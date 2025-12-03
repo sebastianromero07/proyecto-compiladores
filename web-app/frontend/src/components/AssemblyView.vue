@@ -4,6 +4,7 @@
       <h3 class="text-sm font-bold text-cyan-400 tracking-wide">ASSEMBLY CODE</h3>
     </div>
     
+
     <div class="flex-1 overflow-y-auto font-mono text-xs custom-scrollbar bg-black">
       <div v-if="assemblyLines.length > 0">
         <div 
@@ -45,7 +46,7 @@
 export default {
   name: 'AssemblyView',
   props: {
-    assembly: {
+    code: {
       type: String,
       default: ''
     },
@@ -56,9 +57,9 @@ export default {
   },
   computed: {
     assemblyLines() {
-      if (!this.assembly) return [];
+      if (!this.code) return [];
       
-      return this.assembly.split('\n').map(line => {
+      return this.code.split('\n').map(line => {
         const trimmed = line.trim();
         
         if (trimmed.endsWith(':')) {

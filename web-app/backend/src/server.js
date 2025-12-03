@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import compileRoutes from './routes/compile.js';
 import executeRoutes from './routes/execute.js';
+import inputRoutes from './routes/inputs.js';
 
 const app = express();
 const server = createServer(app);
@@ -16,6 +17,7 @@ app.use(express.json());
 // Routes
 app.use('/api/compile', compileRoutes);
 app.use('/api/execute', executeRoutes);
+app.use('/api/inputs', inputRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

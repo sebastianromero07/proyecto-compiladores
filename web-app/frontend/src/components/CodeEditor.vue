@@ -1,9 +1,21 @@
 <template>
   <div class="h-full flex flex-col bg-black overflow-hidden">
-    <div class="bg-gradient-to-r from-gray-900 to-black px-4 py-2 border-b border-cyan-500/30 flex-shrink-0">
+    <!-- Header con botón de Guardar -->
+    <div class="bg-gradient-to-r from-gray-900 to-black px-4 py-2 border-b border-cyan-500/30 flex-shrink-0 flex justify-between items-center">
       <h3 class="text-sm font-bold text-cyan-400 tracking-wide">SOURCE CODE</h3>
+      <div v-if="currentFile" class="flex items-center gap-2">
+        <span class="text-xs text-gray-500">{{ currentFile }}</span>
+        <button 
+          @click="saveCurrentFile" 
+          class="text-xs bg-cyan-900/50 hover:bg-cyan-700 text-cyan-200 px-2 py-1 rounded border border-cyan-500/30 transition-colors"
+        >
+          💾 Save
+        </button>
+      </div>
     </div>
     
+    
+    <!-- ...existing code (Area de texto)... -->
     <div class="flex-1 overflow-hidden bg-black">
       <div class="h-full flex overflow-hidden bg-black">
         <!-- Line numbers -->
@@ -17,24 +29,30 @@
         <textarea 
           v-model="localCode"
           @input="handleInput"
-          class="flex-1 bg-black text-gray-100 font-mono text-sm p-4 resize-none outline-none border-none leading-6 overflow-y-auto"
-          placeholder="Write your C code here..."
+          class="flex-1 overflow-y-auto bg-black text-gray-100 font-mono text-sm p-4 resize-none outline-none border-none leading-6 overflow-y-auto"
+          placeholder="Select a file or write code..."
           spellcheck="false"
         ></textarea>
       </div>
     </div>
 
-    <!-- Quick Examples -->
+    <!-- Footer: Lista de Inputs Dinámica -->
     <div class="bg-gradient-to-r from-gray-900 to-black px-4 py-2 border-t border-cyan-500/30 flex-shrink-0">
-      <div class="flex gap-2 text-xs items-center">
-        <span class="text-gray-500 mr-2 font-mono">EXAMPLES:</span>
+      <div class="flex gap-2 text-xs items-center overflow-x-auto pb-1" style="scrollbar-width: thin;">
+        <span class="text-gray-500 mr-2 font-mono flex-shrink-0">INPUTS:</span>
+        
         <button 
-          v-for="example in examples" 
-          :key="example.name"
-          @click="loadExample(example)"
-          class="bg-gray-800 hover:bg-gray-700 border border-cyan-500/30 hover:border-cyan-500 px-3 py-1 rounded transition-all text-cyan-400 font-mono"
+          v-for="file in inputFiles" 
+          :key="file"
+          @click="loadFile(file)"
+          :class="[
+            'px-3 py-1 rounded transition-all font-mono border whitespace-nowrap',
+            currentFile === file 
+              ? 'bg-cyan-900/80 border-cyan-400 text-white' 
+              : 'bg-gray-800 hover:bg-gray-700 border-cyan-500/30 hover:border-cyan-500 text-cyan-400'
+          ]"
         >
-          {{ example.name }}
+          {{ file }}
         </button>
       </div>
     </div>
@@ -42,6 +60,8 @@
 </template>
 
 <script>
+import { compilerStore } from '../stores/compiler';
+
 export default {
   props: {
     modelValue: String,
@@ -51,48 +71,8 @@ export default {
   data() {
     return {
       localCode: this.modelValue,
-      examples: [
-        {
-          name: 'Basic',
-          code: `#include<stdio.h>
-
-int main(){
-    int x = 5;
-    printf("Hello: %d\\n", x);
-    return 0;
-}`
-        },
-        {
-          name: 'Function',
-          code: `#include<stdio.h>
-
-int sum(int a, int b){
-    return a + b;
-}
-
-int main(){
-    int result = sum(5, 3);
-    printf("Result: %d\\n", result);
-    return 0;
-}`
-        },
-        {
-          name: 'If-Else',
-          code: `#include<stdio.h>
-
-int main(){
-    int x = 5;
-    int y = 10;
-    
-    if (x > y) {
-        printf("x is greater\\n");
-    } else {
-        printf("y is greater\\n");
-    }
-    return 0;
-}`
-        }
-      ]
+      inputFiles: [],
+      currentFile: null
     }
   },
   computed: {
@@ -105,13 +85,35 @@ int main(){
       this.localCode = newVal;
     }
   },
+  async mounted() {
+    await this.refreshInputs();
+  },
   methods: {
     handleInput() {
       this.$emit('update:modelValue', this.localCode);
     },
-    loadExample(example) {
-      this.localCode = example.code;
-      this.$emit('update:modelValue', this.localCode);
+    async refreshInputs() {
+      this.inputFiles = await compilerStore.listInputs();
+    },
+    async loadFile(filename) {
+      try {
+        const content = await compilerStore.loadInput(filename);
+        this.localCode = content;
+        this.currentFile = filename;
+        this.$emit('update:modelValue', this.localCode);
+      } catch (e) {
+        alert('Error cargando archivo');
+      }
+    },
+    async saveCurrentFile() {
+      if (!this.currentFile) return;
+      try {
+        await compilerStore.saveInput(this.currentFile, this.localCode);
+        // Opcional: Mostrar notificación de éxito
+        console.log('Archivo guardado');
+      } catch (e) {
+        alert('Error guardando archivo');
+      }
     }
   }
 }
@@ -122,12 +124,5 @@ textarea {
   tab-size: 4;
   caret-color: #06b6d4;
 }
-
-textarea::placeholder {
-  color: #4b5563;
-}
-
-textarea::selection {
-  background: rgba(6, 182, 212, 0.3);
-}
+/* ...existing styles... */
 </style>
