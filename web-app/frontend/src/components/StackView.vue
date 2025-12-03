@@ -47,13 +47,20 @@
   </div>
 </template>
 
+
 <script>
 export default {
   name: 'StackView',
   props: {
-    stackData: {
+    stack: {          // <-- CAMBIAR de 'stackData' a 'stack'
       type: Array,
       default: () => []
+    }
+  },
+  computed: {
+    // Usar computed para acceder a los datos
+    stackData() {
+      return this.stack;
     }
   },
   methods: {

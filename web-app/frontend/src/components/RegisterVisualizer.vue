@@ -4,6 +4,7 @@
       <span>🔧</span> Registers
     </h3>
     
+    
     <div class="grid grid-cols-2 gap-3">
       <div 
         v-for="(value, name) in registers" 

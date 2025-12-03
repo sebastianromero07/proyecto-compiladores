@@ -9,6 +9,7 @@
         Stack empty
       </div>
       
+      
       <div 
         v-for="item in stackData" 
         :key="item.address"

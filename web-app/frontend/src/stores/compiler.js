@@ -57,5 +57,36 @@ export const compilerStore = {
     } catch (error) {
       throw new Error('Error obteniendo estado de ejecución');
     }
+  },
+
+  async listInputs() {
+    try {
+      const response = await axios.get(`${API_BASE}/inputs`);
+      return response.data;
+    } catch (error) {
+      console.error('Error listando inputs:', error);
+      return [];
+    }
+  },
+
+  
+  async loadInput(filename) {
+    try {
+      const response = await axios.get(`${API_BASE}/inputs/${filename}`);
+      return response.data.content;
+    } catch (error) {
+      throw new Error('Error cargando archivo');
+    }
+  },
+
+  async saveInput(filename, content) {
+    try {
+      await axios.post(`${API_BASE}/inputs/${filename}`, { content });
+      return true;
+    } catch (error) {
+      throw new Error('Error guardando archivo');
+    }
   }
+
+
 };
