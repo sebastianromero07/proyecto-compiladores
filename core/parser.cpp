@@ -259,7 +259,6 @@ Stm* Parser::parseStm() {
     } else if (match(Token::ID)) {
         string id = previous->text;
         
-        // Handle struct access or simple ID for LHS
         Exp* lhs = new IdExp(id);
         while (match(Token::DOT)) {
             if (match(Token::ID)) {
@@ -272,19 +271,10 @@ Stm* Parser::parseStm() {
             match(Token::SEMICOL);
             return new AssignStm(lhs, rhs);
         } else if (check(Token::LPAREN)) {
-            // Function call
-            // Ensure lhs is just an IdExp for now, as we don't support p.f()
-            // But we already parsed it into lhs.
-            // If lhs is StructAccessExp, it's an error for now unless we support function pointers in structs.
-            // For this task, we assume simple function calls.
-            
+
             IdExp* idExp = dynamic_cast<IdExp*>(lhs);
             if (idExp) {
                 FcallExp* fcall = new FcallExp(idExp->value);
-                // lhs was allocated, but we are converting it to FcallExp. 
-                // We should delete lhs if we don't use it, but here we used its value.
-                // Wait, lhs is allocated. We need to delete it to avoid leak, or reuse it.
-                // Since we created new FcallExp, we can delete lhs.
                 delete lhs; 
                 
                 match(Token::LPAREN);
@@ -297,12 +287,11 @@ Stm* Parser::parseStm() {
                 match(Token::SEMICOL);
                 return new FcallStm(fcall);
             } else {
-                // Error: function call on non-ID
                 delete lhs;
                 return nullptr;
             }
         }
-        delete lhs; // If not assignment or call
+        delete lhs;
     }
 
     while (!check(Token::SEMICOL) && !isAtEnd()) {

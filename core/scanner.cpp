@@ -26,7 +26,6 @@ Token* Scanner::nextToken() {
     first = current;
     c = input[current];
 
-    // Manejar directivas de preprocesador (#include, #define, etc.)
     if (c == '#') {
         current++;
         while (current < input.length() && 
@@ -47,7 +46,6 @@ Token* Scanner::nextToken() {
             current++;
         }
         
-        // Verificar si es un número flotante
         if (current < input.length() && input[current] == '.') {
             current++; 
             if (current < input.length() && isdigit(input[current])) {
@@ -56,7 +54,6 @@ Token* Scanner::nextToken() {
                 }
                 token = new Token(Token::FLOAT_NUM, input, first, current - first);
             } else {
-                // Punto sin dígitos después - error
                 return new Token(Token::ERR, input, first, current - first);
             }
         } else {
@@ -94,7 +91,6 @@ Token* Scanner::nextToken() {
         else if (lexema == "struct") return new Token(Token::STRUCT, input, first, current - first);
         else return new Token(Token::ID, input, first, current - first);
     }
-    // Otros operadores y símbolos
     else if (strchr("+/-*(){};,?:=<>.", c)) {
         switch (c) {
             case '+': token = new Token(Token::PLUS, c); break;

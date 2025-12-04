@@ -44,7 +44,7 @@ int TypeCheckerVisitor::visit(VarDec* vd) {
         if (structSizes.count(vd->type->name)) {
             locales += structSizes[vd->type->name];
         } else {
-            locales += 1; // Fallback? Or error.
+            locales += 1; 
         }
     } else {
         locales += vd->vars.size();
@@ -55,7 +55,7 @@ int TypeCheckerVisitor::visit(VarDec* vd) {
 int TypeCheckerVisitor::visit(StructDec* sd) {
     int size = 0;
     for (auto field : sd->fields) {
-        size += field->vars.size(); // Assume each field var is 1 slot (8 bytes)
+        size += field->vars.size();
     }
     structSizes[sd->name] = size;
     return 0;
@@ -140,52 +140,51 @@ int CodeGenerator::generar(Program* prog) {
     return 0;
 }
 
-bool CodeGenerator::evalConstExpr(Exp* e, int& value) {
-    if (auto num = dynamic_cast<NumberExp*>(e)) {
-        value = num->value;
+bool CodeGenerator::evalConstExpr(Exp* e, int& result) {
+    if (!e) return false;
+    
+    // Cambiar IntExp por NumberExp
+    if (NumberExp* ne = dynamic_cast<NumberExp*>(e)) {
+        result = ne->value;
         return true;
     }
-
-    if (auto b = dynamic_cast<BoolExp*>(e)) {
-        value = b->value ? 1 : 0;
-        return true;
-    }
-
-    if (auto id = dynamic_cast<IdExp*>(e)) {
-        auto it = isConst.find(id->value);
-        if (it != isConst.end() && it->second) {
-            value = constVal[id->value];
+    
+    if (IdExp* id = dynamic_cast<IdExp*>(e)) {
+        // NO propagar constantes si estamos en un loop
+        if (inLoop) return false;
+        
+        if (isConst.count(id->value) && isConst[id->value]) {
+            result = constVal[id->value];
             return true;
         }
         return false;
     }
-
-    if (auto bin = dynamic_cast<BinaryExp*>(e)) {
-        int lv, rv;
-        if (!evalConstExpr(bin->left, lv))  return false;
-        if (!evalConstExpr(bin->right, rv)) return false;
-
-        switch (bin->op) {
-            case PLUS_OP:  value = lv + rv;  return true;
-            case MINUS_OP: value = lv - rv;  return true;
-            case MUL_OP:   value = lv * rv;  return true;
-            case DIV_OP:
-                if (rv == 0) return false;
-                value = lv / rv;
+    
+    if (BinaryExp* be = dynamic_cast<BinaryExp*>(e)) {
+        int l, r;
+        if (!evalConstExpr(be->left, l)) return false;
+        if (!evalConstExpr(be->right, r)) return false;
+        
+        switch (be->op) {
+            case PLUS_OP: result = l + r; return true;
+            case MINUS_OP: result = l - r; return true;
+            case MUL_OP: result = l * r; return true;
+            case DIV_OP: 
+                if (r == 0) return false;
+                result = l / r; 
                 return true;
-            case LT_OP:  value = (lv <  rv) ? 1 : 0; return true;
-            case LE_OP:  value = (lv <= rv) ? 1 : 0; return true;
-            case GT_OP:  value = (lv >  rv) ? 1 : 0; return true;
-            case GE_OP:  value = (lv >= rv) ? 1 : 0; return true;
-            case EQ_OP:  value = (lv == rv) ? 1 : 0; return true;
-            case NE_OP:  value = (lv != rv) ? 1 : 0; return true;
+            case LT_OP: result = l < r ? 1 : 0; return true;
+            case LE_OP: result = l <= r ? 1 : 0; return true;
+            case GT_OP: result = l > r ? 1 : 0; return true;
+            case GE_OP: result = l >= r ? 1 : 0; return true;
+            case EQ_OP: result = l == r ? 1 : 0; return true;
+            case NE_OP: result = l != r ? 1 : 0; return true;
             default: return false;
         }
     }
-
+    
     return false;
 }
-
 
 bool CodeGenerator::exprIsFloat(Exp* e) {
     if (dynamic_cast<FloatExp*>(e)) return true;
@@ -195,15 +194,10 @@ bool CodeGenerator::exprIsFloat(Exp* e) {
         if (it != varTypes.end()) {
             return it->second == TypeDecl::FLOAT_TYPE;
         }
-        // Check struct members? Too complex without full type system.
         return false;
     }
     
     if (auto sa = dynamic_cast<StructAccessExp*>(e)) {
-        // We need to know the type of the member.
-        // This is hard without context.
-        // But we can guess or rely on runtime (codegen time) checks.
-        // For now return false, and let visit handle it.
         return false; 
     }
 
@@ -365,8 +359,7 @@ int CodeGenerator::visit(FloatExp* exp) {
     return 0;
 }
 
-// Updated visit(IdExp) to handle address generation and struct types
-string lastStructType; // Helper global for this file (or member)
+string lastStructType;
 
 int CodeGenerator::visit(IdExp* exp) {
     if (localVars.check(exp->value)) {
@@ -435,7 +428,6 @@ int CodeGenerator::visit(FcallExp* exp) {
         if (strExp) {
             string label = getStringLabel(strExp->value);
             
-            // Procesar argumentos adicionales
             ++it;
             int argIndex = 0;
             int xmmIndex = 0;
@@ -445,13 +437,11 @@ int CodeGenerator::visit(FcallExp* exp) {
                 arg->accept(this);
                 
                 if (isFloat) {
-                    // Para floats, ya están en %xmm0
                     if (xmmIndex > 0) {
                         out << "    movsd %xmm0, %xmm" << xmmIndex << "\n";
                     }
                     xmmIndex++;
                 } else {
-                    // Para enteros
                     switch (argIndex) {
                         case 0: out << "    movq %rax, %rsi\n"; break;
                         case 1: out << "    movq %rax, %rdx\n"; break;
@@ -471,7 +461,6 @@ int CodeGenerator::visit(FcallExp* exp) {
         }
         
     } else {
-        // Otras funciones (no printf)
         vector<string> argRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
         int xmm_idx = 0;
         int gp_idx = 0;
@@ -513,7 +502,6 @@ int CodeGenerator::visit(VarDec* vd) {
 
         if (!inFunction) {
             globalVars[name] = true;
-            // Global struct init not supported yet
             if (var.init_value) {
                 int value;
                 if (var.init_value->isConstant(value)) {
@@ -523,10 +511,9 @@ int CodeGenerator::visit(VarDec* vd) {
         } else {
             if (vd->type->kind == TypeDecl::STRUCT_TYPE) {
                 int size = structDefs[vd->type->name].size;
-                offset = offset - size + 8; // Allocate space, packing downwards
+                offset = offset - size + 8;
                 localVars.add_var(name, offset);
                 offset -= 8;
-                // Struct init not supported
             } else {
                 localVars.add_var(name, offset);
                 
@@ -561,7 +548,7 @@ int CodeGenerator::visit(StructDec* sd) {
         for (auto& var : field->vars) {
             info.offsets[var.name] = currentOffset;
             info.memberTypes[var.name] = field->type->kind;
-            currentOffset += 8; // Assume 8 bytes for everything
+            currentOffset += 8; 
         }
     }
     info.size = currentOffset;
@@ -572,13 +559,11 @@ int CodeGenerator::visit(StructDec* sd) {
 int CodeGenerator::visit(StructAccessExp* exp) {
     bool oldWantAddress = wantAddress;
     wantAddress = true;
-    exp->left->accept(this); // %rax has base address
+    exp->left->accept(this); 
     wantAddress = oldWantAddress;
     
-    // lastStructType should be set by visit(IdExp) or recursive visit(StructAccessExp)
     string structName = lastStructType;
     if (structDefs.count(structName) == 0) {
-        // Error or unknown struct
         return 0;
     }
     
@@ -587,13 +572,9 @@ int CodeGenerator::visit(StructAccessExp* exp) {
     
     out << "    addq $" << memberOffset << ", %rax\n";
     
-    // Update lastStructType for next access if needed
-    // (If member is also a struct, we need to know its type name. 
-    // But our StructInfo only stores TypeKind. We might need to store type name too.
-    // For now, assume flat structs or no nested struct access in this test case.)
-    
+
     if (wantAddress) {
-        return 0; // %rax has address
+        return 0; 
     }
     
     if (memberType == TypeDecl::FLOAT_TYPE) {
@@ -740,58 +721,106 @@ int CodeGenerator::visit(FunDec* fd) {
 }
 
 int CodeGenerator::visit(AssignStm* stm) {
-    // Optimización: Si el LHS es un IdExp simple, generar código más eficiente
     IdExp* idLhs = dynamic_cast<IdExp*>(stm->lhs);
+    StructAccessExp* structLhs = dynamic_cast<StructAccessExp*>(stm->lhs);
     
+    // Caso simple: variable local
     if (idLhs && localVars.check(idLhs->value)) {
-        // Caso simple: variable local
         int lhsOffset = localVars.lookup(idLhs->value);
         
-        // Obtener el tipo del LHS
         TypeDecl::TypeKind lhsType = TypeDecl::INT_TYPE;
         if (varTypes.count(idLhs->value)) {
             lhsType = varTypes[idLhs->value];
         }
         
-        // Evaluar RHS
+        // Verificar si RHS es constante entera
+        int cv;
+        if (evalConstExpr(stm->rhs, cv)) {
+            if (lhsType == TypeDecl::FLOAT_TYPE) {
+                out << "    movq $" << cv << ", %rax\n";
+                out << "    cvtsi2sd %rax, %xmm0\n";
+                out << "    movsd %xmm0, " << lhsOffset << "(%rbp)\n";
+            } else {
+                out << "    movq $" << cv << ", " << lhsOffset << "(%rbp)\n";
+            }
+            isConst[idLhs->value] = true;
+            constVal[idLhs->value] = cv;
+            return 0;
+        }
+        
         stm->rhs->accept(this);
         
-        // Determinar si necesitamos conversión de tipos
         bool rhsIsFloat = isFloat;
         bool lhsIsFloat = (lhsType == TypeDecl::FLOAT_TYPE);
         
         if (rhsIsFloat && !lhsIsFloat) {
-            // RHS es float, LHS es int -> convertir float a int
             out << "    cvttsd2si %xmm0, %rax\n";
             out << "    movq %rax, " << lhsOffset << "(%rbp)\n";
         } else if (!rhsIsFloat && lhsIsFloat) {
-            // RHS es int, LHS es float -> convertir int a float
             out << "    cvtsi2sd %rax, %xmm0\n";
             out << "    movsd %xmm0, " << lhsOffset << "(%rbp)\n";
         } else if (lhsIsFloat) {
-            // Ambos son float
             out << "    movsd %xmm0, " << lhsOffset << "(%rbp)\n";
         } else {
-            // Ambos son int
             out << "    movq %rax, " << lhsOffset << "(%rbp)\n";
         }
         
-        // Propagación de constantes (solo para enteros)
-        if (!lhsIsFloat) {
-            int cv;
-            if (stm->rhs->isConstant(cv)) {
-                isConst[idLhs->value] = true;
-                constVal[idLhs->value] = cv;
-            } else {
-                isConst[idLhs->value] = false;
+        isConst[idLhs->value] = false;
+        return 0;
+    }
+    
+    // Caso: acceso a miembro de struct (p.edad, p.salario)
+    if (structLhs) {
+        // Obtener el tipo del miembro
+        TypeDecl::TypeKind lhsType = TypeDecl::INT_TYPE;
+        
+        // Navegar para encontrar el struct base y el tipo del miembro
+        IdExp* baseId = dynamic_cast<IdExp*>(structLhs->left);
+        if (baseId && varStructTypes.count(baseId->value)) {
+            string structName = varStructTypes[baseId->value];
+            if (structDefs.count(structName)) {
+                auto& info = structDefs[structName];
+                if (info.memberTypes.count(structLhs->id)) {
+                    lhsType = info.memberTypes[structLhs->id];
+                }
             }
+        }
+        
+        // Obtener dirección del miembro
+        wantAddress = true;
+        stm->lhs->accept(this);
+        wantAddress = false;
+        
+        out << "    pushq %rax\n";
+        
+        // Evaluar RHS
+        stm->rhs->accept(this);
+        
+        bool rhsIsFloat = isFloat;
+        bool lhsIsFloat = (lhsType == TypeDecl::FLOAT_TYPE);
+        
+        out << "    popq %rcx\n";
+        
+        if (rhsIsFloat && !lhsIsFloat) {
+            // RHS es float, LHS es int -> convertir
+            out << "    cvttsd2si %xmm0, %rax\n";
+            out << "    movq %rax, (%rcx)\n";
+        } else if (!rhsIsFloat && lhsIsFloat) {
+            // RHS es int, LHS es float -> convertir
+            out << "    cvtsi2sd %rax, %xmm0\n";
+            out << "    movsd %xmm0, (%rcx)\n";
+        } else if (lhsIsFloat) {
+            // Ambos son float
+            out << "    movsd %xmm0, (%rcx)\n";
+        } else {
+            // Ambos son int
+            out << "    movq %rax, (%rcx)\n";
         }
         
         return 0;
     }
     
-    // Caso general: usar leaq para LHS complejos (structs, arrays, etc.)
-    // Primero necesitamos saber el tipo del LHS
+    // Caso general: otros LHS complejos
     TypeDecl::TypeKind lhsType = TypeDecl::INT_TYPE;
     if (idLhs && varTypes.count(idLhs->value)) {
         lhsType = varTypes[idLhs->value];
@@ -811,11 +840,9 @@ int CodeGenerator::visit(AssignStm* stm) {
     out << "    popq %rcx\n";
     
     if (rhsIsFloat && !lhsIsFloat) {
-        // RHS es float, LHS es int -> convertir float a int
         out << "    cvttsd2si %xmm0, %rax\n";
         out << "    movq %rax, (%rcx)\n";
     } else if (!rhsIsFloat && lhsIsFloat) {
-        // RHS es int, LHS es float -> convertir int a float
         out << "    cvtsi2sd %rax, %xmm0\n";
         out << "    movsd %xmm0, (%rcx)\n";
     } else if (lhsIsFloat) {
@@ -838,7 +865,6 @@ int CodeGenerator::visit(PrintStm* stm) {
     if (strExp) {
         string label = getStringLabel(strExp->value);
         
-        // Procesar argumentos adicionales (después del formato)
         ++it;
         int argIndex = 0;
         int xmmIndex = 0;
@@ -848,34 +874,28 @@ int CodeGenerator::visit(PrintStm* stm) {
             arg->accept(this);
             
             if (isFloat) {
-                // Para floats, ya están en %xmm0, moverlos al registro XMM correspondiente
                 if (xmmIndex > 0) {
                     out << "    movsd %xmm0, %xmm" << xmmIndex << "\n";
                 }
                 xmmIndex++;
             } else {
-                // Para enteros, mover de %rax al registro correspondiente
-                // printf usa: %rsi, %rdx, %rcx, %r8, %r9 para args después del formato
                 switch (argIndex) {
                     case 0: out << "    movq %rax, %rsi\n"; break;
                     case 1: out << "    movq %rax, %rdx\n"; break;
                     case 2: out << "    movq %rax, %rcx\n"; break;
                     case 3: out << "    movq %rax, %r8\n"; break;
                     case 4: out << "    movq %rax, %r9\n"; break;
-                    default: break; // Más de 5 argumentos irían al stack
+                    default: break; 
                 }
                 argIndex++;
             }
             ++it;
         }
         
-        // Configurar el número de registros XMM usados
         out << "    movl $" << xmmIndex << ", %eax\n";
         
-        // Cargar la dirección del formato en %rdi
         out << "    leaq " << label << "(%rip), %rdi\n";
         
-        // Llamar a printf
         out << "    call printf@PLT\n";
     }
     
@@ -914,33 +934,70 @@ int CodeGenerator::visit(IfStm* stm) {
 
 int CodeGenerator::visit(WhileStm* stm) {
     int label = labelCounter++;
+    
     out << "while_" << label << ":\n";
+    
+    // Evaluar condición (puede usar constantes aquí)
     stm->condition->accept(this);
+    
     out << "    cmpq $0, %rax\n";
     out << "    je endwhile_" << label << "\n";
-    if (stm->body) stm->body->accept(this);
+    
+    // Marcar que estamos en un loop - deshabilitar propagación de constantes
+    bool wasInLoop = inLoop;
+    inLoop = true;
+    
+    // Invalidar todas las constantes que se modifican en el loop
+    // (las variables asignadas dentro del loop ya no son constantes)
+    
+    if (stm->body) {
+        stm->body->accept(this);
+    }
+    
+    inLoop = wasInLoop;
+    
     out << "    jmp while_" << label << "\n";
     out << "endwhile_" << label << ":\n";
+    
     return 0;
 }
 
 int CodeGenerator::visit(ForStm* stm) {
     int label = labelCounter++;
-
-    if (stm->init) stm->init->accept(this);
-
+    
+    // Inicialización (fuera del loop)
+    if (stm->init) {
+        stm->init->accept(this);
+    }
+    
     out << "for_" << label << ":\n";
+    
+    // Condición
     if (stm->condition) {
         stm->condition->accept(this);
         out << "    cmpq $0, %rax\n";
         out << "    je endfor_" << label << "\n";
     }
-
-    if (stm->body) stm->body->accept(this);
-    if (stm->update) stm->update->accept(this);
-
+    
+    // Marcar que estamos en un loop
+    bool wasInLoop = inLoop;
+    inLoop = true;
+    
+    // Cuerpo
+    if (stm->body) {
+        stm->body->accept(this);
+    }
+    
+    // Incremento - usar 'update' (no 'increment')
+    if (stm->update) {
+        stm->update->accept(this);
+    }
+    
+    inLoop = wasInLoop;
+    
     out << "    jmp for_" << label << "\n";
     out << "endfor_" << label << ":\n";
+    
     return 0;
 }
 
@@ -967,8 +1024,7 @@ int CodeGenerator::visit(FcallStm* stm) {
             out << label << ": .string " << formatExp->value << "\n";
             out << ".text\n";
 
-            // Detectar formato
-            // (Simplified printf logic)
+
              out << "    leaq " << label << "(%rip), %rdi\n";
              
              int xmm_idx = 0;
@@ -987,7 +1043,6 @@ int CodeGenerator::visit(FcallStm* stm) {
              out << "    call printf@PLT\n";
         }
     } else {
-        // Normal function call statement
         stm->fcall->accept(this);
     }
     return 0;
@@ -1022,7 +1077,6 @@ string CodeGenerator::getStringLabel(const string& s) {
     string label = "str_" + to_string(stringCounter++);
     stringLabels[s] = label;
     
-    // Emitir la definición del string
     out << ".data\n";
     out << label << ": .string " << s << "\n";
     out << ".text\n";

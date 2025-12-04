@@ -11,7 +11,6 @@
 
 using namespace std;
 
-// Forward declarations para todas las clases del AST
 class BinaryExp;
 class NumberExp;
 class FloatExp;
@@ -98,6 +97,7 @@ private:
     unordered_map<string, int> globalInitializers;
     int labelCount = 0;
     int stringCounter = 0;
+    bool inLoop = false;
     string getStringLabel(const string& s);
 public:
     TypeCheckerVisitor typeChecker;
@@ -113,14 +113,14 @@ public:
         unordered_map<string, TypeDecl::TypeKind> memberTypes;
     };
     unordered_map<string, StructInfo> structDefs;
-    unordered_map<string, string> varStructTypes; // varName -> structName
+    unordered_map<string, string> varStructTypes; 
 
     int offset = -8;
     int labelCounter = 0;
     bool inFunction = false;
     bool isFloat = false; 
     bool isUnsigned = false; 
-    bool wantAddress = false; // Flag for l-value access
+    bool wantAddress = false; 
     string currentFunction;
 
     unordered_map<string, bool> isConst;
