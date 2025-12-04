@@ -747,29 +747,56 @@ int CodeGenerator::visit(AssignStm* stm) {
         // Caso simple: variable local
         int lhsOffset = localVars.lookup(idLhs->value);
         
+        // Obtener el tipo del LHS
+        TypeDecl::TypeKind lhsType = TypeDecl::INT_TYPE;
+        if (varTypes.count(idLhs->value)) {
+            lhsType = varTypes[idLhs->value];
+        }
+        
         // Evaluar RHS
         stm->rhs->accept(this);
         
-        // Almacenar directamente
-        if (isFloat) {
+        // Determinar si necesitamos conversión de tipos
+        bool rhsIsFloat = isFloat;
+        bool lhsIsFloat = (lhsType == TypeDecl::FLOAT_TYPE);
+        
+        if (rhsIsFloat && !lhsIsFloat) {
+            // RHS es float, LHS es int -> convertir float a int
+            out << "    cvttsd2si %xmm0, %rax\n";
+            out << "    movq %rax, " << lhsOffset << "(%rbp)\n";
+        } else if (!rhsIsFloat && lhsIsFloat) {
+            // RHS es int, LHS es float -> convertir int a float
+            out << "    cvtsi2sd %rax, %xmm0\n";
+            out << "    movsd %xmm0, " << lhsOffset << "(%rbp)\n";
+        } else if (lhsIsFloat) {
+            // Ambos son float
             out << "    movsd %xmm0, " << lhsOffset << "(%rbp)\n";
         } else {
+            // Ambos son int
             out << "    movq %rax, " << lhsOffset << "(%rbp)\n";
         }
         
-        // Propagación de constantes (opcional)
-        int cv;
-        if (stm->rhs->isConstant(cv)) {
-            isConst[idLhs->value] = true;
-            constVal[idLhs->value] = cv;
-        } else {
-            isConst[idLhs->value] = false;
+        // Propagación de constantes (solo para enteros)
+        if (!lhsIsFloat) {
+            int cv;
+            if (stm->rhs->isConstant(cv)) {
+                isConst[idLhs->value] = true;
+                constVal[idLhs->value] = cv;
+            } else {
+                isConst[idLhs->value] = false;
+            }
         }
         
         return 0;
     }
     
     // Caso general: usar leaq para LHS complejos (structs, arrays, etc.)
+    // Primero necesitamos saber el tipo del LHS
+    TypeDecl::TypeKind lhsType = TypeDecl::INT_TYPE;
+    if (idLhs && varTypes.count(idLhs->value)) {
+        lhsType = varTypes[idLhs->value];
+    }
+    
     wantAddress = true;
     stm->lhs->accept(this);
     wantAddress = false;
@@ -778,9 +805,20 @@ int CodeGenerator::visit(AssignStm* stm) {
     
     stm->rhs->accept(this);
     
+    bool rhsIsFloat = isFloat;
+    bool lhsIsFloat = (lhsType == TypeDecl::FLOAT_TYPE);
+    
     out << "    popq %rcx\n";
     
-    if (isFloat) {
+    if (rhsIsFloat && !lhsIsFloat) {
+        // RHS es float, LHS es int -> convertir float a int
+        out << "    cvttsd2si %xmm0, %rax\n";
+        out << "    movq %rax, (%rcx)\n";
+    } else if (!rhsIsFloat && lhsIsFloat) {
+        // RHS es int, LHS es float -> convertir int a float
+        out << "    cvtsi2sd %rax, %xmm0\n";
+        out << "    movsd %xmm0, (%rcx)\n";
+    } else if (lhsIsFloat) {
         out << "    movsd %xmm0, (%rcx)\n";
     } else {
         out << "    movq %rax, (%rcx)\n";

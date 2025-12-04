@@ -34,12 +34,15 @@
             <span v-if="item.isRbp" class="text-[9px] bg-red-500 px-1.5 py-0.5 rounded text-black font-bold">RBP</span>
           </div>
           
-          <!-- Value -->
-          <div class="text-right">
+          <!-- Value: Hex + Decimal -->
+          <div class="text-right flex items-center gap-2">
             <span v-if="item.hasValue" :class="item.isRsp ? 'text-cyan-400' : item.isRbp ? 'text-red-400' : 'text-gray-300'" class="font-semibold">
               0x{{ item.value }}
             </span>
-            <span v-else class="text-gray-700">---</span>
+            <span v-if="item.hasValue" class="text-gray-500 text-[9px]">
+              ({{ item.decimalValue }})
+            </span>
+            <span v-if="!item.hasValue" class="text-gray-700">---</span>
           </div>
         </div>
       </div>
@@ -52,15 +55,18 @@
 export default {
   name: 'StackView',
   props: {
-    stack: {          // <-- CAMBIAR de 'stackData' a 'stack'
+    stack: {
       type: Array,
       default: () => []
     }
   },
   computed: {
-    // Usar computed para acceder a los datos
     stackData() {
-      return this.stack;
+      return this.stack.map(item => ({
+        ...item,
+        // Agregar valor decimal
+        decimalValue: this.hexToDecimal(item.value)
+      }));
     }
   },
   methods: {
@@ -68,6 +74,12 @@ export default {
       if (offset === 0) return '0';
       if (offset > 0) return `+${offset}`;
       return `${offset}`;
+    },
+    hexToDecimal(hexValue) {
+      if (!hexValue || hexValue === '---') return '---';
+      // Convertir hex string a número decimal
+      const num = parseInt(hexValue, 16);
+      return isNaN(num) ? '---' : num;
     }
   }
 }
